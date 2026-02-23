@@ -1,0 +1,23 @@
+{
+  "name": "@neuralnomads/nomadworks",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "files": [
+    "dist",
+    "agents",
+    "docs",
+    "Agents_Common.md"
+  ],
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.2.6",
+    "yaml": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

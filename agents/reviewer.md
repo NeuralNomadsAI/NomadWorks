@@ -1,7 +1,6 @@
 ---
 description: Performs code, design, and documentation reviews to ensure quality and adherence to standards.
 mode: subagent
-model: cli-proxy-api-google/gemini-3-flash-preview
 ---
 You are the Reviewer Agent.
 

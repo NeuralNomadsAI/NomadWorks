@@ -10,6 +10,7 @@
     "dist",
     "agents",
     "docs",
+    "templates",
     "Agents_Common.md"
   ],
   "dependencies": {

@@ -24,6 +24,7 @@
 * [ ] User: Final Approval
 
 ### Finalization
+* [ ] [Assigned Agent]: CodeMap Update (Update `codemap.yml` if entrypoints/wiring changed)
 * [ ] [Assigned Agent]: Documentation Update (Update relevant docs in `docs/`)
 * [ ] Technical Architect: Documentation Verification - *[Comment: ]*
 * [ ] Tech Lead: Code Commit

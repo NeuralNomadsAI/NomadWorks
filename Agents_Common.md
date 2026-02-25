@@ -59,4 +59,5 @@ Every task MUST ensure the following files are updated if relevant:
 | **Architecture** | `docs/architecture/TECHNICAL_ARCHITECTURE.md` | Technical Architect |
 | **Feature Spec** | `docs/features/[feature]/SPECIFICATION.md` | BA & Architect |
 | **Tech Guidelines** | `docs/core/technical_guidelines.md` | Tech Lead / Architect |
+| **CodeMap** | `codemap.yml` | Developer / Architect |
 

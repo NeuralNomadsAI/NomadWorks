@@ -8,8 +8,15 @@ The `codemap.yml` is the authoritative navigation index for both humans and agen
 - **entrypoints:** Where the code "starts" (routes, CLI, UI entry).
 - **wiring:** How components are linked (DI, registration, plugins).
 - **sources_of_truth:** Definitive files (schemas, API contracts, configs).
+- **internals:** All other maintained source files that don't fit the above categories.
 - **invariants:** Rules that must never be broken.
 - **commands:** Authoritative shell commands to test/build/lint this area.
+
+## Exhaustive Manifest Rule
+To prevent "shadow code" and documentation rot, the `nomadworks_validate` tool enforces an exhaustive manifest check:
+1. **No Shadow Files:** Every source file present on disk within a module MUST be listed in at least one section of that module's `codemap.yml`.
+2. **The 'internals' Section:** Use this section to index utility files, constants, types, or any other source code that isn't a primary entrypoint or source of truth.
+3. **Placeholders Forbidden:** A CodeMap cannot be left as an empty placeholder. It must account for the actual contents of its directory.
 
 ## Hierarchical Scoping (Rule of Local Knowledge)
 To prevent the root `codemap.yml` from becoming a dumping ground, we enforce a strict hierarchical structure:

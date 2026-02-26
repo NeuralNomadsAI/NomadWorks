@@ -89,4 +89,61 @@ describe("nomadworks_validate", () => {
     const result = await nomadworks_validate_logic(root);
     expect(result.ok).toBe(true); // Should not fail for missing map in ignored dir
   });
+
+  test("Ignores operational folders (tasks, docs, etc.)", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "001-task.md": "# Task content"
+      },
+      "docs": {
+        "readme.md": "some docs"
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true); // Should ignore .md files in operational folders
+  });
+
+  test("Fails when source file is not indexed in module codemap", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo\nmodules: [{path: src}]",
+      "src": {
+        "codemap.yml": "scope: module\nentrypoints: [{path: index.ts}]",
+        "index.ts": "// code",
+        "utils.ts": "// unindexed code"
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toContain("Unindexed source file found: 'utils.ts'");
+  });
+
+  test("Operational folders are exempt from shadow file check even if they have a codemap", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo\nmodules: [{path: docs}]",
+      "docs": {
+        "codemap.yml": "scope: module\nparent: ../codemap.yml\nentrypoints: []",
+        "unindexed_doc.md": "# I am not in the codemap"
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true); // Should pass despite unindexed_doc.md
+  });
+
+  test("Ignores non-source files in shadow file check", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo\nmodules: [{path: src}]",
+      "src": {
+        "codemap.yml": "scope: module\nparent: ../codemap.yml\nentrypoints: []",
+        "image.png": "binary content",
+        "notes.txt": "some notes"
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true); // Should ignore .png and .txt
+  });
 });

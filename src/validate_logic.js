@@ -55,12 +55,17 @@ export async function nomadworks_validate_logic(worktree) {
 
     const dir = path.dirname(filePath);
 
-    // Check if all pointers exist
-    const sectionsToVerify = ["modules", "entrypoints", "sources_of_truth", "links"];
+    // Collect all paths mentioned in the codemap to ensure exhaustive indexing
+    const indexedPaths = new Set();
+    const sectionsToVerify = ["modules", "entrypoints", "sources_of_truth", "links", "internals"];
+    
     for (const section of sectionsToVerify) {
       if (Array.isArray(map[section])) {
         for (const item of map[section]) {
           if (item.path) {
+            // Normalize path for comparison
+            indexedPaths.add(path.normalize(item.path));
+            
             if (section === "links" && (item.path.startsWith("http://") || item.path.startsWith("https://"))) {
               continue;
             }
@@ -69,6 +74,23 @@ export async function nomadworks_validate_logic(worktree) {
             if (!fs.existsSync(absPath)) {
               errors.push(`${filePath}: ${section.slice(0, -1)} path does not exist: ${item.path}`);
             }
+          }
+        }
+      }
+    }
+
+    // Shadow File Check: Ensure all source files in this directory are indexed (Module scope only)
+    const relDir = path.relative(worktree, dir);
+    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
+    const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));
+
+    if (map.scope === "module" && !isOperational) {
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      for (const item of items) {
+        if (item.isFile() && sourceExtensions.includes(path.extname(item.name))) {
+          if (item.name === "codemap.yml") continue;
+          if (!indexedPaths.has(path.normalize(item.name))) {
+            errors.push(`${filePath}: Unindexed source file found: '${item.name}'. Every source file must be categorized in a section (e.g., 'internals').`);
           }
         }
       }

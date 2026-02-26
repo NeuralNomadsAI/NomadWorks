@@ -9,8 +9,10 @@ const DIST = path.join(ROOT, "dist");
 if (fs.existsSync(DIST)) fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(DIST, { recursive: true });
 
-// For now, we are just copying index.js to dist/ since we're using vanilla ESM Node
-// In a real TS setup, we'd run `tsc` here.
-fs.copyFileSync(path.join(SRC, "index.js"), path.join(DIST, "index.js"));
+// Copy all JS files from src to dist
+const files = fs.readdirSync(SRC).filter(f => f.endsWith(".js"));
+for (const file of files) {
+  fs.copyFileSync(path.join(SRC, file), path.join(DIST, file));
+}
 
-console.log("Built dist/index.js successfully.");
+console.log(`Built dist/ successfully (${files.join(", ")}).`);

@@ -2,8 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
+import ignore from "ignore";
 
 import { tool } from "@opencode-ai/plugin/tool";
+import { nomadworks_validate_logic } from "./validate_logic.js";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const AGENTS_DIR = path.join(PKG_ROOT, "agents");
@@ -130,83 +132,11 @@ export default async function NomadWorksPlugin(input) {
       description: "Validate NomadWorks workflow artifacts and CodeMap integrity",
       args: {},
       async execute(args, context) {
-        const rootCodemapPath = path.join(context.worktree, "codemap.yml");
-        if (!fs.existsSync(rootCodemapPath)) return "FAIL: Root codemap.yml not found.";
-
-        const errors = [];
-        const warnings = [];
-
-        function validateMap(filePath) {
-          const content = fs.readFileSync(filePath, "utf8");
-          let map;
-          try {
-            map = YAML.parse(content);
-          } catch (e) {
-            errors.push(`${filePath}: Invalid YAML.`);
-            return;
-          }
-
-          const dir = path.dirname(filePath);
-
-          // Check if all module pointers have their own codemaps
-          if (Array.isArray(map.modules)) {
-            for (const mod of map.modules) {
-              const modPath = path.join(context.worktree, mod.path);
-              const modCodemap = path.join(modPath, "codemap.yml");
-              if (!fs.existsSync(modPath)) {
-                errors.push(`${filePath}: Module path does not exist: ${mod.path}`);
-              } else if (!fs.existsSync(modCodemap)) {
-                errors.push(`${filePath}: Module '${mod.path}' is missing its mandatory codemap.yml.`);
-              }
-            }
-          }
-
-          // Rule of Local Knowledge: Ensure no deep paths in entrypoints or sources_of_truth
-          const pathKeys = ["entrypoints", "sources_of_truth", "links"];
-          for (const key of pathKeys) {
-            if (Array.isArray(map[key])) {
-              for (const entry of map[key]) {
-                if (entry.path && entry.path.includes("/") && !entry.path.startsWith("./")) {
-                  // If it contains a slash, it must be a sibling directory or file relative to this map
-                  // We only warn if it's deeper than 1 level
-                  const parts = entry.path.split("/").filter(p => p && p !== ".");
-                  if (parts.length > 1 && map.scope !== "repo") {
-                     warnings.push(`${filePath}: Path '${entry.path}' violates Rule of Local Knowledge (too deep).`);
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        validateMap(rootCodemapPath);
-        
-        // Recursively find all codemaps in the project to validate them all
-        const allFiles = (dir) => {
-          let results = [];
-          const list = fs.readdirSync(dir);
-          for (let file of list) {
-            if (file === "node_modules" || file.startsWith(".")) continue;
-            file = path.resolve(dir, file);
-            const stat = fs.statSync(file);
-            if (stat && stat.isDirectory()) {
-              results = results.concat(allFiles(file));
-            } else if (file.endsWith("codemap.yml")) {
-              results.push(file);
-            }
-          }
-          return results;
-        };
-
-        const maps = allFiles(context.worktree);
-        for (const m of maps) {
-          if (m !== rootCodemapPath) validateMap(m);
-        }
-
-        if (errors.length === 0) {
-          return `PASS: CodeMap hierarchy validated.\nWarnings: ${warnings.length}\n${warnings.map(w => "- " + w).join("\n")}`;
+        const res = await nomadworks_validate_logic(context.worktree);
+        if (res.ok) {
+          return `PASS: All source directories indexed. Hierarchy validated.\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
         } else {
-          return `FAIL: Validation errors found:\n${errors.map(e => "- " + e).join("\n")}\nWarnings: ${warnings.length}\n${warnings.map(w => "- " + w).join("\n")}`;
+          return `FAIL: Validation errors found:\n${res.errors.map(e => "- " + e).join("\n")}\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
         }
       }
     })

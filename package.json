@@ -4,7 +4,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "files": [
     "dist",
@@ -15,10 +16,12 @@
   ],
   "dependencies": {
     "@opencode-ai/plugin": "^1.2.6",
+    "ignore": "^5.3.2",
     "yaml": "^2.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "jest": "^30.2.0",
     "typescript": "^5.0.0"
   }
 }

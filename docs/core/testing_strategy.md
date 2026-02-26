@@ -11,5 +11,5 @@ We adhere to a strict test pyramid strategy to ensure 100% reliability.
 ## Policies
 - **100% Pass Rate:** All automated tests MUST pass. No "expected skips" are allowed.
 - **Feature-First Placement:** Tests must be placed alongside the code they test (e.g., `src/features/auth/tests/`).
-- **Evidence Collection:** Every task must produce proof of testing (logs, screenshots) saved in `evidences/[task_id]/`.
+- **Evidence Collection:** Every task must produce proof of testing (logs, screenshots) saved in `evidences/[feature_task_name]/`, where `feature_task_name` is the name of the folder created for the task in `tasks/todo/`.
 - **Regression:** A full regression suite must be run by the Developer before handing over to the Reviewer.

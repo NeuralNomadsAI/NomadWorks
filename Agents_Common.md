@@ -26,6 +26,7 @@ Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlight
 *   **Synchronous Only:** No parallel independent work. PMA directs every step.
 *   **Verification Gate:** 100% test pass rate required for task completion.
 *   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
+*   **Evidence Collection:** Evidence (screenshots, logs) must be collected in an `evidences/[feature_task_name]/` folder (git-ignored) before final approval, where `feature_task_name` is the name of the folder created for the task in `tasks/todo/`.
 
 ## 4. Operational Guidelines
 

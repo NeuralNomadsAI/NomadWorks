@@ -2,8 +2,9 @@
 
 ## Feature: [Feature Name]
 
-### Documentation
-* [Link to relevant docs]
+### Source Authority (MANDATORY)
+*   **Spec Reference:** [Commit Hash or SCR ID from documentation update]
+*   **Documentation:** [Link to updated SPECIFICATION.md or FEATURES_LIST.md]
 
 ### Pre Sync
 * [ ] Business Analyst: Requirements Review & Approval

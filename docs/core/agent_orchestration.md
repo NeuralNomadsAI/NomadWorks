@@ -11,12 +11,18 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 - **Active Task:** The single task currently being worked on resides in the root of the `tasks/` directory.
 - **Task Template:** All tasks must follow the standard `task-template.md`.
 
-### 3. Operational Flow
+### 3. Operational Flow (Spec-Driven Trigger)
 
-0.  **Pre-Task Sync-up (Orchestrated by PM Agent):** Before any task is officially started, the Product Manager Agent will initiate a synchronous sync-up. During this, the PMA will share the task details with all relevant agents. The actual task performance only commences once all involved agents confirm their readiness and initial clarifications are addressed.
-1.  **Directed Task Handoffs:**
-    *   When a task is completed by an agent, the Product Manager Agent reviews the output.
-    *   The Product Manager Agent then updates the relevant task file, marks the previous step as complete, and explicitly assigns the next step.
+All engineering work MUST originate from a committed change in the product specification.
+
+0.  **Requirement Discovery (PO & PMA):** The User (Product Owner) discusses high-level goals with the PMA.
+1.  **Pre-Spec-Change Sync (Discovery):** The PMA orchestrates a synchronous discussion with the **BA** and **Tech Lead** to translate goals into concrete specification changes. This follows the same rigorous process as a Pre-Task Sync.
+2.  **Spec Commitment (The Truth Anchor):** Once the PO approves the spec changes, the PMA commits the documentation.
+    *   **SCR ID Format:** `SCR-YYYY-MM-DD-SEQ` (e.g., SCR-2026-02-26-01).
+    *   **Commit Message:** `SCR-<ID>: Update [Feature] spec for [Context]`. The body must include detailed "Why" and key decisions.
+3.  **Task Initiation:** Only after the spec is committed does the PMA create the task folder. The task file MUST reference the **Spec Commit Hash**.
+4.  **Pre-Task Sync (Execution):** Before implementation starts, the PMA initiates a synchronous sync with ALL relevant agents to share task details, identify blockers, and confirm readiness.
+5.  **Directed Task Handoffs:** The PMA assigns sub-tasks based on the committed spec.
 2.  **Orchestrated Communication Protocols:**
     *   **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the Product Manager Agent. The PMA then facilitates the inquiry and relays the response.
     *   **Dependency Management:** The PMA actively tracks and manages all task dependencies.

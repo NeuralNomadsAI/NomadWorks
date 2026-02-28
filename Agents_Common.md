@@ -19,11 +19,14 @@ This document provides essential project-wide information and guidelines that al
 - **qa_engineer**: Executes automated tests and verifies manual scripts.
 - **reviewer**: Performs code, design, and documentation reviews.
 
-## 3. Workflow & Collaboration
+## 3. Workflow & Collaboration (Spec-Driven)
 
 Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlights:
-*   **Task Files as Source of Truth:** All work is tracked in `tasks/` markdown files.
-*   **Synchronous Only:** No parallel independent work. PMA directs every step.
+*   **Spec-First Trigger:** No engineering task can exist without a preceding committed change to the documentation (`docs/`).
+*   **SCR ID:** Every documentation change must use the format `SCR-YYYY-MM-DD-SEQ`.
+*   **Commit Naming:** Documentation commits must follow the pattern `SCR-<ID>: Update [Feature] spec for [Description]`. The commit body must detail the "Why" and all architectural decisions made during the sync.
+*   **Task Files as Handoffs:** Tasks track the *work*, while documentation tracks the *truth*.
+*   **Synchronous Only:** PMA directs every step.
 *   **Verification Gate:** 100% test pass rate required for task completion.
 *   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
 *   **Evidence Collection:** Evidence (screenshots, logs) must be collected in an `evidences/[feature_task_name]/` folder (git-ignored) before final approval, where `feature_task_name` is the name of the folder created for the task in `tasks/todo/`.

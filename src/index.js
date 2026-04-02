@@ -8,11 +8,11 @@ import { tool } from "@opencode-ai/plugin/tool";
 import { nomadworks_validate_logic } from "./validate_logic.js";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const AGENTS_DIR = path.join(PKG_ROOT, "agents");
-const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
+const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
 
 /**
  * Resolves <include:filename.md> markers recursively.
+
  * Checks repo (worktree) first, then falls back to bundle root.
  */
 function resolveIncludes(text, repoRoot, bundleRoot) {
@@ -160,87 +160,90 @@ export default async function NomadWorksPlugin(input) {
         cfg.agent[agentID] = { ...(cfg.agent[agentID] ?? {}), disable: true };
       }
 
-      // 2. Set default agent to Product Manager
       cfg.default_agent = "product_manager";
 
-      if (!fs.existsSync(AGENTS_DIR)) return;
+      const repoAgentsDir = path.join(worktree, ".codenomad", "nomadworks", "agents");
+      const agentSources = [BUNDLE_AGENTS_DIR];
+      if (fs.existsSync(repoAgentsDir)) agentSources.push(repoAgentsDir);
 
-      const files = fs.readdirSync(AGENTS_DIR).filter(f => f.endsWith(".md"));
+      for (const agentsDir of agentSources) {
+        const files = fs.readdirSync(agentsDir).filter(f => f.endsWith(".md"));
 
-      // 2. Determine which agents to register from our bundle
-      for (const file of files) {
-        const id = file.replace(".md", "");
-        
-        // If not active, only register the Product Manager Agent (so user can run init)
-        if (!nomadworksActive && id !== "product_manager") {
-          continue;
-        }
-
-        const agentOverride = repoCfg.agents?.[id] || {};
-
-        // If an agent is explicitly disabled in the repo config, skip registration
-        if (nomadworksActive && agentOverride.enabled === false) continue;
-
-        const filePath = path.join(AGENTS_DIR, file);
-        const rawContent = fs.readFileSync(filePath, "utf8");
-        const { data, body } = parseFrontmatter(rawContent);
-
-        // Resolve includes using both the current repo and the plugin bundle as base paths
-        const finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
-
-        // Merge hierarchies: Global Defaults -> Agent Frontmatter -> Repo Overrides
-        const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
-        const model = agentOverride.model || data.model || repoCfg.defaults?.model;
-        
-        const agentConfig = {
-          description: data.description,
-          mode: agentOverride.mode || data.mode || "subagent",
-          prompt: finalPrompt,
-          tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
-          permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
-          model: toModelString(provider, model),
-          temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature
-        };
-
-        // Collect extra options for pass-through (e.g. reasoningEffort, textVerbosity)
-        const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt'];
-        
-        const defaults = repoCfg.defaults || {};
-        for (const k of Object.keys(defaults)) {
-          if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
-        }
-        for (const k of Object.keys(data)) {
-          if (!specialKeys.includes(k)) agentConfig[k] = data[k];
-        }
-        for (const k of Object.keys(agentOverride)) {
-          if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
-        }
-
-        // Add additional tools if defined
-        if (Array.isArray(agentOverride.tools_add)) {
-          agentConfig.tools ??= {};
-          for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
-        }
-
-        // Remove tools if defined
-        if (Array.isArray(agentOverride.tools_remove)) {
-          if (agentConfig.tools) {
-            for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
-          }
-        }
-
-        cfg.agent[id] = agentConfig;
-
-        // Dump final config for verification
-        if (repoCfg.features?.debug_dumps !== false) {
-          const debugPath = path.join(debugDir, `${id}.md`);
+        // Determine which agents to register
+        for (const file of files) {
+          const id = file.replace(".md", "");
           
-          // Separate prompt from other config for YAML header
-          const { prompt, ...dumpConfig } = agentConfig;
-          const debugHeader = `---
+          // If not active, only register the Product Manager Agent (so user can run init)
+          if (!nomadworksActive && id !== "product_manager") {
+            continue;
+          }
+
+          const agentOverride = repoCfg.agents?.[id] || {};
+
+          // If an agent is explicitly disabled in the repo config, skip registration
+          if (nomadworksActive && agentOverride.enabled === false) continue;
+
+          const filePath = path.join(agentsDir, file);
+          const rawContent = fs.readFileSync(filePath, "utf8");
+          const { data, body } = parseFrontmatter(rawContent);
+
+          // Resolve includes using both the current repo and the plugin bundle as base paths
+          const finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
+
+          // Merge hierarchies: Global Defaults -> Agent Frontmatter -> Repo Overrides
+          const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
+          const model = agentOverride.model || data.model || repoCfg.defaults?.model;
+          
+          const agentConfig = {
+            description: data.description,
+            mode: agentOverride.mode || data.mode || "subagent",
+            prompt: finalPrompt,
+            tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
+            permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
+            model: toModelString(provider, model),
+            temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature
+          };
+
+          // Collect extra options for pass-through (e.g. reasoningEffort, textVerbosity)
+          const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt'];
+          
+          const defaults = repoCfg.defaults || {};
+          for (const k of Object.keys(defaults)) {
+            if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
+          }
+          for (const k of Object.keys(data)) {
+            if (!specialKeys.includes(k)) agentConfig[k] = data[k];
+          }
+          for (const k of Object.keys(agentOverride)) {
+            if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
+          }
+
+          // Add additional tools if defined
+          if (Array.isArray(agentOverride.tools_add)) {
+            agentConfig.tools ??= {};
+            for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
+          }
+
+          // Remove tools if defined
+          if (Array.isArray(agentOverride.tools_remove)) {
+            if (agentConfig.tools) {
+              for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
+            }
+          }
+
+          cfg.agent[id] = agentConfig;
+
+          // Dump final config for verification
+          if (repoCfg.features?.debug_dumps !== false) {
+            const debugPath = path.join(debugDir, `${id}.md`);
+            
+            // Separate prompt from other config for YAML header
+            const { prompt, ...dumpConfig } = agentConfig;
+            const debugHeader = `---
 ${YAML.stringify(dumpConfig).trim()}
 ---`;
-          fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+            fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+          }
         }
       }
     }

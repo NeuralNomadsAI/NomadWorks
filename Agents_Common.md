@@ -62,6 +62,7 @@ Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlight
     *   `logs/`: Terminal output from verification commands.
     *   `screenshots/`: Visual proof (mandatory for UI changes).
 *   **Atomic Commitment:** A task is only complete when the code AND the "Truth" documentation (`docs/product/`, `docs/architecture/`, etc.) are updated in a single atomic commit. The SCR file is then marked as `Implemented`.
+*   **Batch Integrity:** In autonomous mode, the PMA should aim to complete the entire assigned batch. If a single task is blocked, it is isolated in `tasks/blocked/`, and the PMA continues with the rest of the batch if possible.
 
 ## 6. Mandatory Documentation Update Matrix
 

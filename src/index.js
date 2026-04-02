@@ -125,7 +125,21 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(rootCodemapPath, codemapConfig, "utf8");
         }
 
-        return "NomadWorks initialized: .codenomad/nomadworks.yaml and codemap.yml created.";
+        // Scaffold Task Registries
+        const tasksDir = path.join(context.worktree, "tasks");
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+
+        const currentPath = path.join(tasksDir, "current.md");
+        const donePath = path.join(tasksDir, "done.md");
+        
+        if (!fs.existsSync(currentPath)) {
+          fs.writeFileSync(currentPath, "# Current Tasks (Backlog)\n\n## 🚀 Active\n- (None)\n\n## 📋 Todo\n- (None)\n\n## 🛑 Blocked\n- (None)\n", "utf8");
+        }
+        if (!fs.existsSync(donePath)) {
+          fs.writeFileSync(donePath, "# Completed Tasks (Registry)\n\n| Date | Task ID | SCR ID | Commit | Summary |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
+        }
+
+        return "NomadWorks initialized: .codenomad/nomadworks.yaml, registries, and codemap.yml created.";
       }
     }),
     nomadworks_validate: tool({

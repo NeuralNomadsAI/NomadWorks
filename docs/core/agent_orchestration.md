@@ -7,6 +7,9 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 
 ### 2. File-Based Task Management
 - **Tasks Directory:** `tasks/`
+- **Central Registries:** 
+    *   `tasks/current.md`: The active dashboard. Tracks **Active**, **Todo**, and **Blocked** tasks.
+    *   `tasks/done.md`: The historical registry. Maps completed tasks to SCRs and commits.
 - **Subdirectories:** `todo/`, `blocked/`, `done/`.
 - **Active Task:** The single task currently being worked on resides in the root of the `tasks/` directory.
 - **Task Template:** All tasks must follow the standard `task-template.md`.
@@ -24,16 +27,22 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and an **A
 #### Phase 2: Autonomous Implementation (Agent-Centric)
 4.  **Batch Initiation:** The PO identifies one or more **Approved SCRs** for implementation.
 5.  **Autonomous Cycle:** For each assigned SCR, the PMA executes the following:
-    *   **Task Decomposition:** The PMA and **Technical Architect** review the SCR and determine if it requires multiple atomic tasks. If so, they scaffold the task folders before proceeding.
-    *   **Task Initiation:** Create the task folder in `tasks/todo/` linking to the SCR file.
+    *   **Task Decomposition & Impact Mapping:** The PMA and **Technical Architect** review the SCR to map its **Impact Surface** (listing all affected directories and `codemap.yml` files). They then decompose the SCR into **Micro-Tasks**, each represented by a small, atomic task card in `tasks/todo/`.
+    *   **Task Initiation:** Activate one task at a time. The task file MUST reference the SCR ID and the mapped Impact Surface.
     *   **Pre-Task Sync:** Gather specialists (internal) to confirm implementation readiness.
     *   **Implementation Phase:** Delegate to Developer and QA.
     *   **Post-Task Sync (Collective Verification):** PMA orchestrates a synchronous review of the **Evidence Packet**.
         *   **BA (Document Steward):** Verifies that the "Truth" documentation updates match the SCR and the implementation.
         *   **Tech Lead:** Verifies behavioral correctness and code quality.
         *   **UI/UX Designer:** Verifies aesthetic compliance using `screenshots/`.
-    *   **The "Bounce Back" Loop:** If any specialist rejects the implementation, the PMA resets the sub-task and re-assigns it to the original agent using the **same `task_id`**, providing the rejection feedback as context.
+    *   **The "Bounce Back" Loop:** If any specialist rejects the implementation, the PMA resets the sub-task and re-assigns it to the original agent using the **same `task_id`**. If a task fails this sync **twice**, the PMA must pause and trigger a full Pre-Task Sync with the whole team.
     *   **Automated Commitment:** Once 100% approved, the PMA commits the changes and moves the task to `done/`.
+
+### 5. Blocker Management
+If an autonomous task cannot proceed due to external factors or missing information:
+1.  **Move to Blocked:** The PMA moves the task folder to `tasks/blocked/`.
+2.  **Blocker Report:** The PMA creates a `BLOCKER.md` inside the task folder explaining exactly what is missing and what the PO needs to resolve.
+3.  **PO Notification:** The PMA informs the Product Owner at the end of the batch summary.
 6.  **Batch Completion:** The PMA provides a summary report to the PO only after the entire batch of SCRs is implemented.
 2.  **Orchestrated Communication Protocols:**
     *   **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the Product Manager Agent. The PMA then facilitates the inquiry and relays the response.

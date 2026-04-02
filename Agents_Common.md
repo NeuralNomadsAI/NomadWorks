@@ -29,17 +29,13 @@ All agents MUST adhere to and assess for these principles in every turn:
 - **qa_engineer**: Executes automated tests and verifies manual scripts.
 - **reviewer**: Performs code, design, and documentation reviews.
 
-## 3. Workflow & Collaboration (Spec-Driven)
+## 3. Workflow & Collaboration (Two-Phase)
 
 Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlights:
-*   **Spec-First Trigger:** No engineering task can exist without a preceding committed change to the documentation (`docs/`).
-*   **SCR ID:** Every documentation change must use the format `SCR-YYYY-MM-DD-SEQ`.
-*   **Commit Naming:** Documentation commits must follow the pattern `SCR-<ID>: Update [Feature] spec for [Description]`. The commit body must detail the "Why" and all architectural decisions made during the sync.
-*   **Task Files as Handoffs:** Tasks track the *work*, while documentation tracks the *truth*.
-*   **Synchronous Only:** PMA directs every step.
-*   **Verification Gate:** 100% test pass rate required for task completion.
-*   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
-*   **Evidence Collection:** Evidence (screenshots, logs) must be collected in an `evidences/[feature_task_name]/` folder (git-ignored) before final approval, where `feature_task_name` is the name of the folder created for the task in `tasks/todo/`.
+*   **Negotiation Phase:** Work starts with a **Spec Change Request (SCR)** file in `docs/scrs/`. No code is written until the SCR is approved by the Product Owner.
+*   **Autonomous Phase:** Once an SCR is triggered for implementation, the NomadWorks Collective executes the entire cycle (Task -> Dev -> QA -> Review -> Commit) autonomously.
+*   **Source of Truth:** SCR files track the *proposals*, Documentation tracks the *state*, and Tasks track the *work*.
+*   **Verification:** 100% test pass rate and internal sign-offs are required before autonomous commitment.
 
 ## 4. Operational Guidelines
 
@@ -61,6 +57,11 @@ Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlight
 *   **The 3-Attempt Rule:** If a Developer fails to resolve an issue after three attempts, it is escalated to the Technical Architect.
 *   **Task Lifecycle:** PMA reviews -> Updates task file -> Assigns next agent.
 *   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
+*   **Evidence Collection:** Every task must produce an **Evidence Packet** in `evidences/[feature_task_name]/`. This MUST include:
+    *   `SUMMARY.md`: A brief explanation of what was tested and what the attached files prove.
+    *   `logs/`: Terminal output from verification commands.
+    *   `screenshots/`: Visual proof (mandatory for UI changes).
+*   **Atomic Commitment:** A task is only complete when the code AND the "Truth" documentation (`docs/product/`, `docs/architecture/`, etc.) are updated in a single atomic commit. The SCR file is then marked as `Implemented`.
 
 ## 6. Mandatory Documentation Update Matrix
 

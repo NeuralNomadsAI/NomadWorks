@@ -11,18 +11,30 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 - **Active Task:** The single task currently being worked on resides in the root of the `tasks/` directory.
 - **Task Template:** All tasks must follow the standard `task-template.md`.
 
-### 3. Operational Flow (Spec-Driven Trigger)
+### 3. Operational Flow (Two-Phase Execution)
 
-All engineering work MUST originate from a committed change in the product specification.
+The workflow is divided into a **Negotiation Phase** (Human-involved) and an **Autonomous Implementation Phase** (Agent-driven).
 
-0.  **Requirement Discovery (PO & PMA):** The User (Product Owner) discusses high-level goals with the PMA.
-1.  **Pre-Spec-Change Sync (Discovery):** The PMA orchestrates a synchronous discussion with the **BA** and **Tech Lead** to translate goals into concrete specification changes. This follows the same rigorous process as a Pre-Task Sync.
-2.  **Spec Commitment (The Truth Anchor):** Once the PO approves the spec changes, the PMA commits the documentation.
-    *   **SCR ID Format:** `SCR-YYYY-MM-DD-SEQ` (e.g., SCR-2026-02-26-01).
-    *   **Commit Message:** `SCR-<ID>: Update [Feature] spec for [Context]`. The body must include detailed "Why" and key decisions.
-3.  **Task Initiation:** Only after the spec is committed does the PMA create the task folder. The task file MUST reference the **Spec Commit Hash**.
-4.  **Pre-Task Sync (Execution):** Before implementation starts, the PMA initiates a synchronous sync with ALL relevant agents to share task details, identify blockers, and confirm readiness.
-5.  **Directed Task Handoffs:** The PMA assigns sub-tasks based on the committed spec.
+#### Phase 1: Negotiation & Definition (Human-Centric)
+0.  **Requirement Discovery:** User (PO) discusses high-level goals with the PMA and Tech Lead.
+1.  **Pre-Spec-Change Sync:** The PMA orchestrates a sync with the **BA** and **Tech Lead** to draft a **Spec Change Request (SCR)** file in `docs/scrs/SCR-YYYY-MM-DD-SEQ.md`.
+2.  **Iteration Loop:** The PO, BA, and Tech Lead iterate on the SCR file until all details are clear and approved.
+3.  **The Truth Anchor:** Once approved, the SCR file serves as the definitive source of truth for the change.
+
+#### Phase 2: Autonomous Implementation (Agent-Centric)
+4.  **Batch Initiation:** The PO identifies one or more **Approved SCRs** for implementation.
+5.  **Autonomous Cycle:** For each assigned SCR, the PMA executes the following:
+    *   **Task Decomposition:** The PMA and **Technical Architect** review the SCR and determine if it requires multiple atomic tasks. If so, they scaffold the task folders before proceeding.
+    *   **Task Initiation:** Create the task folder in `tasks/todo/` linking to the SCR file.
+    *   **Pre-Task Sync:** Gather specialists (internal) to confirm implementation readiness.
+    *   **Implementation Phase:** Delegate to Developer and QA.
+    *   **Post-Task Sync (Collective Verification):** PMA orchestrates a synchronous review of the **Evidence Packet**.
+        *   **BA (Document Steward):** Verifies that the "Truth" documentation updates match the SCR and the implementation.
+        *   **Tech Lead:** Verifies behavioral correctness and code quality.
+        *   **UI/UX Designer:** Verifies aesthetic compliance using `screenshots/`.
+    *   **The "Bounce Back" Loop:** If any specialist rejects the implementation, the PMA resets the sub-task and re-assigns it to the original agent using the **same `task_id`**, providing the rejection feedback as context.
+    *   **Automated Commitment:** Once 100% approved, the PMA commits the changes and moves the task to `done/`.
+6.  **Batch Completion:** The PMA provides a summary report to the PO only after the entire batch of SCRs is implemented.
 2.  **Orchestrated Communication Protocols:**
     *   **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the Product Manager Agent. The PMA then facilitates the inquiry and relays the response.
     *   **Dependency Management:** The PMA actively tracks and manages all task dependencies.

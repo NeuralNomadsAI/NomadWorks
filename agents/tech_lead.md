@@ -30,5 +30,4 @@ Critically evaluate the provided task definition. Ensure it contains all necessa
 
 <include:Agents_Common.md>
 <include:docs/core/tech_lead_guidelines.md>
-<include:docs/core/technical_guidelines.md>
 <include:docs/core/codemap_conventions.md>

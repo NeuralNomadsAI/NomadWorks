@@ -25,4 +25,4 @@ You are the Reviewer Agent.
 
 <include:Agents_Common.md>
 <include:docs/core/testing_strategy.md>
-<include:docs/core/technical_guidelines.md>
+<include:docs/core/codemap_conventions.md>

@@ -119,6 +119,19 @@ export async function nomadworks_validate_logic(worktree) {
     const hasCodemap = fs.existsSync(path.join(dir, "codemap.yml"));
     const items = fs.readdirSync(dir, { withFileTypes: true });
 
+    // Check for placeholders in any .md file (except in tasks/done)
+    if (!relDir.startsWith("tasks/done")) {
+      for (const item of items) {
+        if (item.isFile() && item.name.endsWith(".md")) {
+          const content = fs.readFileSync(path.join(dir, item.name), "utf8");
+          if (content.includes("[To be defined]") || content.includes("[Insert ")) {
+            const relFilePath = path.join(relDir, item.name);
+            errors.push(`Documentation Placeholder found: '${relFilePath}' still contains [To be defined] or [Insert ...] placeholders.`);
+          }
+        }
+      }
+    }
+
     // Exclusion list for mandatory codemaps (operational folders)
     const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
     const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));

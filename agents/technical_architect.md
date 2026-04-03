@@ -33,5 +33,4 @@ Critically evaluate the provided task definition. Ensure it contains all necessa
 *   **Pragmatic:** Balances technical excellence with practical delivery goals.
 
 <include:Agents_Common.md>
-<include:docs/core/technical_guidelines.md>
 <include:docs/core/codemap_conventions.md>

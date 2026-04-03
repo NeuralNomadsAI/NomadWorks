@@ -26,17 +26,15 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and an **A
 
 #### Phase 2: Autonomous Implementation (Agent-Centric)
 4.  **Batch Initiation:** The PO identifies one or more **Approved SCRs** for implementation.
-5.  **Autonomous Cycle:** For each assigned SCR, the PMA executes the following:
-    *   **Task Decomposition & Impact Mapping:** The PMA and **Technical Architect** review the SCR to map its **Impact Surface** (listing all affected directories and `codemap.yml` files). They then decompose the SCR into **Micro-Tasks**, each represented by a small, atomic task card in `tasks/todo/`.
-    *   **Task Initiation:** Activate one task at a time. The task file MUST reference the SCR ID and the mapped Impact Surface.
-    *   **Pre-Task Sync:** Gather specialists (internal) to confirm implementation readiness.
-    *   **Implementation Phase:** Delegate to Developer and QA.
-    *   **Post-Task Sync (Collective Verification):** PMA orchestrates a synchronous review of the **Evidence Packet**.
-        *   **BA (Document Steward):** Verifies that the "Truth" documentation updates match the SCR and the implementation.
-        *   **Tech Lead:** Verifies behavioral correctness and code quality.
-        *   **UI/UX Designer:** Verifies aesthetic compliance using `screenshots/`.
-    *   **The "Bounce Back" Loop:** If any specialist rejects the implementation, the PMA resets the sub-task and re-assigns it to the original agent using the **same `task_id`**. If a task fails this sync **twice**, the PMA must pause and trigger a full Pre-Task Sync with the whole team.
-    *   **Automated Commitment:** Once 100% approved, the PMA commits the changes and moves the task to `done/`.
+5.  **Autonomous Cycle (Sequential Execution):** The PMA processes tasks one-by-one. A task MUST be fully completed (including commit and archiving) before the next task begins.
+    *   **Task Decomposition & Impact Mapping:** The PMA and **Technical Architect** review the SCR to map its **Impact Surface**. They then decompose the SCR into **Micro-Tasks**.
+    *   **Sequential Loop:** For each Micro-Task:
+        1. **Task Initiation:** Activate the task card.
+        2. **Pre-Task Sync:** Confirm readiness.
+        3. **Implementation:** Delegate Dev/QA.
+        4. **Post-Task Sync:** Collective verification of evidence.
+        5. **Commit & Archive:** Finalize code and registries.
+    *   **Next Task:** Proceed to the next Micro-Task only after the previous one is in `tasks/done/`.
 
 ### 5. Blocker Management
 If an autonomous task cannot proceed due to external factors or missing information:

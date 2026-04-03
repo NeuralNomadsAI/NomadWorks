@@ -9,10 +9,10 @@ import { nomadworks_validate_logic } from "./validate_logic.js";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
+const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 
 /**
  * Resolves <include:filename.md> markers recursively.
-
  * Checks repo (worktree) first, then falls back to bundle root.
  */
 function resolveIncludes(text, repoRoot, bundleRoot) {
@@ -91,8 +91,8 @@ export default async function NomadWorksPlugin(input) {
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
 
         // Discover all agent IDs to enable them explicitly
-        const agentIds = fs.existsSync(AGENTS_DIR) 
-          ? fs.readdirSync(AGENTS_DIR).filter(f => f.endsWith(".md")).map(f => f.replace(".md", ""))
+        const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR) 
+          ? fs.readdirSync(BUNDLE_AGENTS_DIR).filter(f => f.endsWith(".md")).map(f => f.replace(".md", ""))
           : [];
 
         const nomadworksTmplPath = path.join(TEMPLATES_DIR, "nomadworks.yaml.template");
@@ -127,16 +127,26 @@ export default async function NomadWorksPlugin(input) {
 
         // Scaffold Task Registries
         const tasksDir = path.join(context.worktree, "tasks");
+        const scrsDir = path.join(context.worktree, "docs", "scrs");
         if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+        if (!fs.existsSync(scrsDir)) fs.mkdirSync(scrsDir, { recursive: true });
 
         const currentPath = path.join(tasksDir, "current.md");
         const donePath = path.join(tasksDir, "done.md");
+        const scrsCurrentPath = path.join(scrsDir, "current.md");
+        const scrsDonePath = path.join(scrsDir, "done.md");
         
         if (!fs.existsSync(currentPath)) {
           fs.writeFileSync(currentPath, "# Current Tasks (Backlog)\n\n## 🚀 Active\n- (None)\n\n## 📋 Todo\n- (None)\n\n## 🛑 Blocked\n- (None)\n", "utf8");
         }
         if (!fs.existsSync(donePath)) {
           fs.writeFileSync(donePath, "# Completed Tasks (Registry)\n\n| Date | Task ID | SCR ID | Commit | Summary |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
+        }
+        if (!fs.existsSync(scrsCurrentPath)) {
+          fs.writeFileSync(scrsCurrentPath, "# Current Spec Change Requests (Backlog)\n\n## 🚀 Active/Review\n- (None)\n\n## 📋 Approved (Ready for Implementation)\n- (None)\n\n## 💡 Proposed\n- (None)\n", "utf8");
+        }
+        if (!fs.existsSync(scrsDonePath)) {
+          fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
         return "NomadWorks initialized: .codenomad/nomadworks.yaml, registries, and codemap.yml created.";
@@ -163,27 +173,25 @@ export default async function NomadWorksPlugin(input) {
       
       const nomadworksActive = repoCfg && repoCfg.enabled === true;
 
-      // 1. Disable built-in OpenCode agents and any existing agents
-      const builtInAgents = ["build", "plan", "general", "explore"];
-      for (const id of builtInAgents) {
-        cfg.agent[id] = { ...(cfg.agent[id] ?? {}), disable: true };
-      }
-      
-      // Also disable any other registered agents to ensure full takeover
-      for (const agentID of Object.keys(cfg.agent)) {
-        cfg.agent[agentID] = { ...(cfg.agent[agentID] ?? {}), disable: true };
-      }
-
-      cfg.default_agent = "product_manager";
-
+      // 1. Identify and compile all NomadWorks agents
       const repoAgentsDir = path.join(worktree, ".codenomad", "nomadworks", "agents");
-      const agentSources = [BUNDLE_AGENTS_DIR];
+      const agentSources = [];
+      if (fs.existsSync(BUNDLE_AGENTS_DIR)) agentSources.push(BUNDLE_AGENTS_DIR);
       if (fs.existsSync(repoAgentsDir)) agentSources.push(repoAgentsDir);
 
-      for (const agentsDir of agentSources) {
-        const files = fs.readdirSync(agentsDir).filter(f => f.endsWith(".md"));
+      const ourAgents = {};
 
-        // Determine which agents to register
+      for (const agentsDir of agentSources) {
+        if (!fs.existsSync(agentsDir)) continue;
+        
+        let files = [];
+        try {
+          files = fs.readdirSync(agentsDir).filter(f => f.endsWith(".md"));
+        } catch (e) {
+          console.error(`[NomadWorks] Failed to read agents from ${agentsDir}:`, e);
+          continue;
+        }
+
         for (const file of files) {
           const id = file.replace(".md", "");
           
@@ -198,7 +206,14 @@ export default async function NomadWorksPlugin(input) {
           if (nomadworksActive && agentOverride.enabled === false) continue;
 
           const filePath = path.join(agentsDir, file);
-          const rawContent = fs.readFileSync(filePath, "utf8");
+          let rawContent;
+          try {
+            rawContent = fs.readFileSync(filePath, "utf8");
+          } catch (e) {
+            console.error(`[NomadWorks] Failed to read agent file ${filePath}:`, e);
+            continue;
+          }
+
           const { data, body } = parseFrontmatter(rawContent);
 
           // Resolve includes using both the current repo and the plugin bundle as base paths
@@ -215,11 +230,12 @@ export default async function NomadWorksPlugin(input) {
             tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
             permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
             model: toModelString(provider, model),
-            temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature
+            temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
+            disable: false // EXPLICITLY ENABLE
           };
 
           // Collect extra options for pass-through (e.g. reasoningEffort, textVerbosity)
-          const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt'];
+          const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
           
           const defaults = repoCfg.defaults || {};
           for (const k of Object.keys(defaults)) {
@@ -232,34 +248,51 @@ export default async function NomadWorksPlugin(input) {
             if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
           }
 
-          // Add additional tools if defined
+          // Add/Remove tools
           if (Array.isArray(agentOverride.tools_add)) {
             agentConfig.tools ??= {};
             for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
           }
-
-          // Remove tools if defined
           if (Array.isArray(agentOverride.tools_remove)) {
             if (agentConfig.tools) {
               for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
             }
           }
 
-          cfg.agent[id] = agentConfig;
+          ourAgents[id] = agentConfig;
 
           // Dump final config for verification
           if (repoCfg.features?.debug_dumps !== false) {
             const debugPath = path.join(debugDir, `${id}.md`);
-            
-            // Separate prompt from other config for YAML header
             const { prompt, ...dumpConfig } = agentConfig;
             const debugHeader = `---
 ${YAML.stringify(dumpConfig).trim()}
 ---`;
-            fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+            try {
+              if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+              fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+            } catch (e) { /* ignore debug errors */ }
           }
         }
       }
+
+      // 2. Takeover: Disable all existing and built-in agents NOT in our fleet
+      const builtInAgents = ["build", "plan", "general", "explore"];
+      const allToDisable = new Set([...builtInAgents, ...Object.keys(cfg.agent)]);
+      
+      for (const id of allToDisable) {
+        if (!ourAgents[id]) {
+          cfg.agent[id] = { ...(cfg.agent[id] ?? {}), disable: true };
+        }
+      }
+
+      // 3. Register our fleet
+      for (const [id, config] of Object.entries(ourAgents)) {
+        cfg.agent[id] = config;
+      }
+
+      // 4. Set default agent
+      cfg.default_agent = "product_manager";
     }
   };
 }

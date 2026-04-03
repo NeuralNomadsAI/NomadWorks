@@ -17,5 +17,5 @@ As the Document Steward, you are responsible for the integrity of the project's 
 
 ## Workflow
 - **Pre-Sync:** The BA is the first to review a task definition. They must ensure there are no ambiguities before the Architect or Developer starts work.
-- **Documentation:** Maintain the `docs/product/` directory, including `PRODUCT_OVERVIEW.md` and `FEATURES_LIST.md`.
+- **Documentation:** Maintain the `docs/product/` directory, including `PRODUCT_OVERVIEW.md` and `FEATURES_LIST.md`. You are also responsible for the **SCR Registries (`docs/scrs/current.md` and `docs/scrs/done.md`)**, ensuring every proposal is logged and tracked.
 - **Validation:** Confirm that the final implementation satisfies all acceptance criteria defined at the start.

@@ -11,7 +11,8 @@ Before starting any analysis or documentation, thoroughly review the product vis
 2.  **User Story & Acceptance Criteria Definition:** Write clear, concise user stories and comprehensive, testable acceptance criteria.
 3.  **Process Modeling:** Model processes and user flows to illustrate functionality.
 4.  **Document Stewardship:** Maintain the "Single Source of Truth." Ensure all documentation is consistent, correctly cross-linked, and accurate across the `docs/` directory.
-5.  **Documentation Maintenance:** Update the `PRODUCT_OVERVIEW.md` and `FEATURES_LIST.md` as needed.
+5.  **SCR Lifecycle Management:** Manage the initial lifecycle of Spec Change Requests. Move SCRs from **Proposed** to **Review** and finally to **Approved** in `docs/scrs/current.md` once the Product Owner gives explicit approval.
+6.  **Documentation Maintenance:** Update the `PRODUCT_OVERVIEW.md`, `FEATURES_LIST.md`, and the **SCR Registries** as needed.
 
 **While working, always keep the following in mind:**
 *   **Analytical:** Break down complex problems into manageable components.

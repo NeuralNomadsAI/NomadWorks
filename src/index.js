@@ -11,6 +11,8 @@ const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 
+const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath }
+
 /**
  * Resolves <include:filename.md> markers recursively.
  * Checks repo (worktree) first, then falls back to bundle root.
@@ -62,9 +64,14 @@ function parseFrontmatter(mdText) {
 
 function toModelString(provider, model) {
   if (!model) return undefined;
-  if (model.includes("/")) return model;
-  if (!provider) return model;
-  return `${provider}/${model}`;
+  const m = model.trim();
+  const p = provider ? provider.trim() : null;
+
+  if (p) {
+    if (m.startsWith(`${p}/`)) return m;
+    return `${p}/${m}`;
+  }
+  return m;
 }
 
 export default async function NomadWorksPlugin(input) {
@@ -81,6 +88,62 @@ export default async function NomadWorksPlugin(input) {
       console.error(`[NomadWorks] Failed to parse config at ${configPath}:`, e);
     }
   }
+
+  const startAndMonitorWorkflow = async (sessionId, pmaSessionId, initialText, taskPath = null) => {
+    const client = input.client;
+    if (!client) {
+      console.error("[NomadFlow] No client available for monitoring.");
+      return;
+    }
+
+      const debug = repoCfg.features?.debug_logs === true;
+
+    const identifier = taskPath || sessionId;
+    if (debug) console.log(`[NomadFlow] Starting monitor for session ${sessionId} (Identifier: ${identifier}). Targeted PMA session: ${pmaSessionId}`);
+
+    try {
+      // Blocking prompt call in a background promise
+      if (debug) console.log(`[NomadFlow] Sending initial/resumed prompt to Workflow Runner session ${sessionId}...`);
+      const runResult = await client.session.prompt({
+        path: { id: sessionId },
+        body: {
+          agent: "workflow_runner",
+          parts: [{ type: "text", text: initialText }]
+        }
+      });
+
+      if (debug) console.log(`[NomadFlow] Workflow Runner session ${sessionId} returned control.`);
+
+      // Capture final message and notify PMA
+      const finalMessage = runResult.data.parts.map(p => p.text).join("\n");
+      if (debug) console.log(`[NomadFlow] Attempting to notify PMA session ${pmaSessionId} of completion...`);
+      
+      await client.session.promptAsync({
+        path: { id: pmaSessionId },
+        body: {
+          parts: [{ 
+            type: "text", 
+            text: `[NomadFlow Notification] Workflow Runner has finished work for: ${identifier}.\n\nFINAL SUMMARY FROM RUNNER:\n${finalMessage}` 
+          }]
+        }
+      });
+      if (debug) console.log(`[NomadFlow] Notification sent successfully to PMA session ${pmaSessionId}.`);
+      activeWorkflows.delete(sessionId);
+    } catch (err) {
+      if (debug) console.error(`[NomadFlow] Error in monitor loop for session ${sessionId}:`, err);
+      try {
+        await client.session.promptAsync({
+          path: { id: pmaSessionId },
+          body: {
+            parts: [{ type: "text", text: `[NomadFlow Error] Workflow Runner failed for ${identifier}: ${err.message}` }]
+          }
+        });
+      } catch (notifyErr) {
+        if (debug) console.error(`[NomadFlow] Failed to send error notification to PMA:`, notifyErr);
+      }
+      activeWorkflows.delete(sessionId);
+    }
+  };
 
   const tools = {
     nomadworks_init: tool({
@@ -163,11 +226,117 @@ export default async function NomadWorksPlugin(input) {
           return `FAIL: Validation errors found:\n${res.errors.map(e => "- " + e).join("\n")}\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
         }
       }
+    }),
+    nomadflow_run_workflow: tool({
+      description: "Start a new autonomous session for a workflow_runner to execute a specific task",
+      args: {
+        task_path: tool.schema.string().describe("Path to the task markdown file (e.g. tasks/todo/task_001.md)"),
+        instructions: tool.schema.string().describe("Detailed instructions for the workflow_runner")
+      },
+      async execute(args, context) {
+        const client = input.client;
+        if (!client) return "Error: OpenCode client not available in plugin context.";
+
+        const pmaSessionId = context.sessionId || context.sessionID;
+        if (!pmaSessionId) return "Error: PMA Session ID not found in context.";
+
+        if (activeWorkflows.size > 0) {
+          return "FAIL: A workflow session is already running. You MUST wait for it to finish before starting a new one.";
+        }
+
+        try {
+          // 1. Create a new session
+          const sessionResult = await client.session.create({
+            body: { title: `Workflow Run: ${path.basename(args.task_path)}` }
+          });
+          const sessionId = sessionResult.data.id;
+
+          activeWorkflows.set(sessionId, { pmaSessionId, taskPath: args.task_path });
+          
+          const initialText = `Task File: ${args.task_path}\n\nInstructions: ${args.instructions}\n\nPlease execute the full lifecycle (Sync -> Implementation -> Commit -> Archive) and provide a final summary.`;
+          
+          // Start monitoring in background (async)
+          startAndMonitorWorkflow(sessionId, pmaSessionId, initialText, args.task_path);
+
+          return `SUCCESS: Workflow Runner session started. ID: ${sessionId}\nInstructions sent for ${args.task_path}. You will be notified on completion in this session (${pmaSessionId}).`;
+        } catch (e) {
+          console.error("[NomadFlow] Failed to start workflow session:", e);
+          return `FAIL: Failed to initiate session: ${e.message}`;
+        }
+      }
+    }),
+    nomadflow_prompt_workflow: tool({
+      description: "Send a message or follow-up prompt to an existing workflow_runner session",
+      args: {
+        session_id: tool.schema.string().describe("The ID of the session started by nomadflow_run_workflow"),
+        text: tool.schema.string().describe("The message or instruction to send to the workflow_runner")
+      },
+      async execute(args, context) {
+        const client = input.client;
+        if (!client) return "Error: OpenCode client not available.";
+
+        const pmaSessionId = context.sessionId || context.sessionID;
+        if (!pmaSessionId) return "Error: PMA Session ID not found.";
+
+        const tracking = activeWorkflows.get(args.session_id);
+
+        try {
+          // 1. If not currently tracked, start monitoring it now
+          if (!tracking) {
+            activeWorkflows.set(args.session_id, { pmaSessionId });
+            
+            // Start monitoring in background
+            startAndMonitorWorkflow(args.session_id, pmaSessionId, args.text);
+            return `SUCCESS: Session '${args.session_id}' was not tracked. Sent prompt and resumed monitoring. You will be notified on completion in this session (${pmaSessionId}).`;
+          }
+
+          // 2. If already tracking (runner is active), send asynchronously so PMA isn't blocked
+          await client.session.promptAsync({
+            path: { id: args.session_id },
+            body: { parts: [{ type: "text", text: args.text }] }
+          });
+
+          return `SUCCESS: Prompt sent to active session '${args.session_id}'. Instructions added to queue.`;
+        } catch (e) {
+          return `FAIL: Could not send prompt: ${e.message}`;
+        }
+      }
     })
   };
 
   return {
     tool: tools,
+    event: async ({ event }) => {
+      const client = input.client;
+      if (!client) return;
+
+    const debug = repoCfg.features?.debug_logs === true;
+
+
+      // Terminal error states: failed or stopped
+      if (event.type === "session.failed" || event.type === "session.stopped") {
+        const sessionID = event.properties?.sessionID;
+        const tracking = activeWorkflows.get(sessionID);
+
+        if (tracking) {
+          if (debug) console.log(`[NomadFlow] Terminal event ${event.type} detected for session ${sessionID}. Notifying PMA...`);
+          try {
+            await client.session.promptAsync({
+              path: { id: tracking.pmaSessionId },
+              body: {
+                parts: [{ 
+                  type: "text", 
+                  text: `[NomadFlow Error Notification] Workflow Runner session ${sessionID} has ${event.type.split('.')[1]}. Please check the runner session logs.` 
+                }]
+              }
+            });
+            activeWorkflows.delete(sessionID);
+          } catch (err) {
+            console.error(`[NomadFlow] Failed to notify PMA session:`, err);
+          }
+        }
+      }
+    },
     async config(cfg) {
       cfg.agent ??= {};
       
@@ -195,14 +364,11 @@ export default async function NomadWorksPlugin(input) {
         for (const file of files) {
           const id = file.replace(".md", "");
           
-          // If not active, only register the Product Manager Agent (so user can run init)
           if (!nomadworksActive && id !== "product_manager") {
             continue;
           }
 
           const agentOverride = repoCfg.agents?.[id] || {};
-
-          // If an agent is explicitly disabled in the repo config, skip registration
           if (nomadworksActive && agentOverride.enabled === false) continue;
 
           const filePath = path.join(agentsDir, file);
@@ -215,11 +381,7 @@ export default async function NomadWorksPlugin(input) {
           }
 
           const { data, body } = parseFrontmatter(rawContent);
-
-          // Resolve includes using both the current repo and the plugin bundle as base paths
           const finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
-
-          // Merge hierarchies: Global Defaults -> Agent Frontmatter -> Repo Overrides
           const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
           const model = agentOverride.model || data.model || repoCfg.defaults?.model;
           
@@ -231,10 +393,9 @@ export default async function NomadWorksPlugin(input) {
             permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
             model: toModelString(provider, model),
             temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
-            disable: false // EXPLICITLY ENABLE
+            disable: false
           };
 
-          // Collect extra options for pass-through (e.g. reasoningEffort, textVerbosity)
           const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
           
           const defaults = repoCfg.defaults || {};
@@ -248,7 +409,6 @@ export default async function NomadWorksPlugin(input) {
             if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
           }
 
-          // Add/Remove tools
           if (Array.isArray(agentOverride.tools_add)) {
             agentConfig.tools ??= {};
             for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
@@ -261,7 +421,6 @@ export default async function NomadWorksPlugin(input) {
 
           ourAgents[id] = agentConfig;
 
-          // Dump final config for verification
           if (repoCfg.features?.debug_dumps !== false) {
             const debugPath = path.join(debugDir, `${id}.md`);
             const { prompt, ...dumpConfig } = agentConfig;
@@ -276,7 +435,6 @@ ${YAML.stringify(dumpConfig).trim()}
         }
       }
 
-      // 2. Takeover: Disable all existing and built-in agents NOT in our fleet
       const builtInAgents = ["build", "plan", "general", "explore"];
       const allToDisable = new Set([...builtInAgents, ...Object.keys(cfg.agent)]);
       
@@ -286,12 +444,10 @@ ${YAML.stringify(dumpConfig).trim()}
         }
       }
 
-      // 3. Register our fleet
       for (const [id, config] of Object.entries(ourAgents)) {
         cfg.agent[id] = config;
       }
 
-      // 4. Set default agent
       cfg.default_agent = "product_manager";
     }
   };

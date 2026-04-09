@@ -9,11 +9,14 @@ This document provides essential project-wide information and guidelines that al
 *   **Workflow Principle:** Orchestrated Subagent Collaboration.
 *   **Central Orchestrator:** The Product Manager Agent (PMA) controls all task assignments and inter-agent communication.
 *   **Operational Flow:** Synchronous, file-based task management with strict verification gates.
+*   **Task Model:** Every task has a `complexity`, a `track`, and a `slice`. Complexity controls process weight, track controls the type of work, and slice identifies the dominant work surface.
 
 ## 2. Software Development Mandates
 
 All agents MUST adhere to and assess for these principles in every turn:
-1.  **Completeness:** No task is "done" until it is 100% complete. This includes error handling, tests, documentation, and CodeMap updates. NEVER leave "TODO" comments or half-implemented features.
+1.  **Atomic Tasks:** Tasks must be kept small and single-purpose. A large change must be sliced into manageable increments using the standard slice set: `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, and `docs`.
+2.  **Completeness:** No task is "done" until it is 100% complete.
+ This includes error handling, tests, documentation, and CodeMap updates. NEVER leave "TODO" comments or half-implemented features.
 2.  **DRY (Don't Repeat Yourself):** Proactively identify and eliminate duplication. Abstract shared logic into reusable modules or utilities.
 3.  **YAGNI (You Ain't Gonna Need It):** Do not implement functionality that is not explicitly required by the current committed specification. Avoid "feature creep" and over-engineering.
 4.  **Long-Term Maintainability:** Write code and documentation that is easy for future agents to understand and modify. Prefer clarity over cleverness.
@@ -36,6 +39,33 @@ Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlight
 *   **Autonomous Phase:** Once an SCR is triggered for implementation, the NomadWorks Collective executes the entire cycle (Task -> Dev -> QA -> Review -> Commit) autonomously.
 *   **Source of Truth:** SCR files track the *proposals*, Documentation tracks the *state*, and Tasks track the *work*.
 *   **Verification:** 100% test pass rate and internal sign-offs are required before autonomous commitment.
+*   **Complexity Routing:** Use `tiny` for low-risk, single-slice work; `standard` for bounded delivery tasks; and `complex` for multi-step work that requires decomposition and the Workflow Runner.
+*   **Limited Parallelism:** Until dedicated git worktree support lands, at most one shared-worktree implementation task may be active at a time. Investigation and spec work may proceed in parallel when they do not interfere with the active implementation task.
+
+## 3.1 Task Model
+
+Every agent MUST read the task frontmatter first and respect its `complexity`, `track`, and `slice`.
+
+- **Complexity:** `tiny`, `standard`, `complex`
+- **Track:** `implementation`, `investigation`, `spec`
+- **Slice:** `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`
+
+Shared routing rules:
+
+- `tiny` work should remain narrowly scoped within one primary slice.
+- `standard` work should stay bounded and keep one dominant slice.
+- `complex` work should be decomposed into slice-based subtasks.
+- Agents should execute only the assigned slice or subtask unless the PMA explicitly broadens the scope.
+
+Pre-sync specialist rules:
+
+- The `product_manager` always facilitates task discussion and does not need to be counted in the specialist quorum.
+- `tiny` technical work should include `developer` and `tech_lead`.
+- Add `business_analyst` to `tiny` work when product behavior, copy intent, or requirements are affected.
+- Add `ui_ux_designer` to any task that affects UI, UX, or other user-facing interface behavior.
+- `standard` work should include `business_analyst` and `technical_architect`.
+- Add `tech_lead` to `standard` work when technical risk or cross-cutting impact is elevated.
+- `complex` work should include `business_analyst`, `technical_architect`, and `tech_lead`.
 
 ## 4. Operational Guidelines
 
@@ -78,3 +108,4 @@ Every task MUST ensure the following files are updated if relevant:
 | **Tech Guidelines** | `docs/core/technical_guidelines.md` | Tech Lead / Architect |
 | **CodeMap** | `codemap.yml` | Developer / Architect |
 
+<include:docs/core/task_model.md>

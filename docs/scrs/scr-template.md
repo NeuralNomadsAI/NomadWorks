@@ -1,6 +1,12 @@
+---
+id: SCR-[ID]
+status: proposed
+tasks: []
+---
+
 # SCR-[ID]: [Title]
 
-## Status: [Proposed / Review / Approved / Implemented]
+## Status: [proposed / review / approved / implemented]
 
 ## 1. Problem Statement
 [Describe why this change is needed]

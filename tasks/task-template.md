@@ -1,22 +1,55 @@
-# Parent Task: [Task ID] - [Short Description]
+---
+id: TASK-[ID]
+complexity: standard
+track: implementation
+slice: logic
+status: todo
+scr: null
+parent: null
+---
+
+# Task: [Task ID] - [Short Description]
 
 ## Feature: [Feature Name]
+
+## Task Routing
+- **Complexity:** `[tiny | standard | complex]`
+- **Track:** `[implementation | investigation | spec]`
+- **Slice:** `[foundation | core | logic | ui | polish | qa | docs]`
 
 ### Source Authority (MANDATORY)
 *   **Spec Reference:** [Commit Hash or SCR ID from documentation update]
 *   **Documentation:** [Link to updated SPECIFICATION.md or FEATURES_LIST.md]
+*   **SCR Link:** Use `null` only for `tiny` work that does not change product behavior or shared specifications.
 
 ### Pre Sync
-* [ ] Business Analyst: Requirements Review & Approval
-* [ ] Technical Architect: Technical Approach Approval
-* [ ] Tech Lead: Technical Approach Approval
-* [ ] UI / UX Designer: Design Input & Review
-* [ ] Product Manager: Pre-Implementation Product Owner Review
+* **PMA Facilitator:** The Product Manager always runs the sync and records the decision.
+* **Default specialists by complexity:**
+  * `tiny`: `developer`, `tech_lead`
+  * `standard`: `business_analyst`, `technical_architect`
+  * `complex`: `business_analyst`, `technical_architect`, `tech_lead`
+* **Conditional specialists:**
+  * Add `ui_ux_designer` for UI, UX, or other user-facing interface work.
+  * Add `business_analyst` to `tiny` tasks when product behavior, copy intent, or requirements change.
+  * Add `tech_lead` to `standard` tasks when technical risk or cross-cutting impact is elevated.
+* [ ] Required specialists participated in pre-sync.
 
 ### Sub-Tasks
 * [ ] Sub-Task: Implementation - `tasks/todo/subtask_1.md`
 * [ ] Sub-Task: QA Engineer Test Strategy Development - `tasks/todo/subtask_2.md`
 * [ ] Sub-Task: QA Engineer Test Development - `tasks/todo/subtask_3.md`
+
+### Slice Planning
+* **Use one primary slice for `tiny` and `standard` tasks.**
+* **Use multiple slice-based subtasks for `complex` tasks.**
+* **Standard slice meanings:**
+  * `foundation`: setup, scaffolding, interfaces, plumbing
+  * `core`: shared services, domain primitives, shared data structures
+  * `logic`: feature behavior and orchestration
+  * `ui`: components, screens, interactions, styling
+  * `polish`: accessibility, performance, edge-case cleanup, refinement
+  * `qa`: automated/manual verification work
+  * `docs`: product, architecture, and task documentation updates
 
 ### Verification
 * [ ] Tech Lead: Functional & Behavioral Verification
@@ -31,7 +64,7 @@
 * [ ] Tech Lead: Code Commit
 * [ ] Product Manager: Task Archiving
 
-### Status: [Pending/In Progress/Done]
+### Status: [todo / in_progress / review / done / blocked]
 
 # Reviews
 ## Technical Architect:

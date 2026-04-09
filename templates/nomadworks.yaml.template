@@ -1,5 +1,15 @@
-# Workflow Feature Flags
+# NomadWorks repository configuration
+enabled: true
+
+defaults:
+  # provider: openai
+  # model: gpt-5.4
+  # temperature: 0.2
+  # permissions: allow
+
 features:
   debug_dumps: true # Dumps final agent configs to .nomadworks/agents/ for verification
   # debug_logs: false # Enable detailed console logging for the plugin
   codemap_verification: true
+
+agents:

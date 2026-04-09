@@ -11,6 +11,7 @@ This document outlines the communication protocols for the project.
 - **Root Directory:** `tasks/`
 - **Folders:** `todo/`, `blocked/`, `done/`.
 - **Handoffs:** PMA reviews output -> Updates task file -> Assigns next agent.
+- **Parallelism:** One shared-worktree implementation task may be active at a time. Investigation and spec tasks may proceed in parallel when they avoid conflicting edits.
 
 ## Escalation Policy (The "3-Attempt Rule")
 - If a Developer fails to implement a feature or fix a bug after **three consecutive attempts**, the PMA will automatically engage the Technical Lead/Architect to provide direct guidance.

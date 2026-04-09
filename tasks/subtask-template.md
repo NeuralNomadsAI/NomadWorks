@@ -1,3 +1,13 @@
+---
+id: TASK-[PARENT].[SUBTASK]
+complexity: complex
+track: implementation
+slice: logic
+status: todo
+scr: SCR-[ID]
+parent: TASK-[PARENT]
+---
+
 # Sub-Task: [Parent ID] - [Sub-Task ID] - [Short Description]
 
 ## Parent Task: [Link to Parent Task]
@@ -9,7 +19,7 @@
 * [Criterion 1]
 
 ### Assigned To: [Primary Agent]
-### Status: [Pending/In Progress/Done]
+### Status: [todo / in_progress / review / done / blocked]
 
 # Reviews
 ## [Reviewer Agent]:

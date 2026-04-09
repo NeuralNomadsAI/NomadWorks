@@ -14,6 +14,16 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 - **Active Task:** The single task currently being worked on resides in the root of the `tasks/` directory.
 - **Task Template:** All tasks must follow the standard `task-template.md`.
 
+### 2.1 Task Routing Model
+- **Complexity:** `tiny`, `standard`, `complex`
+- **Track:** `implementation`, `investigation`, `spec`
+- **Slice:** `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`
+- **Usage Rule:** Complexity determines process weight, track determines the nature of the work, and slice identifies the dominant work surface.
+- **Tiny:** Lightweight task card, direct specialist delegation, lightweight verification.
+- **Standard:** Normal task file, bounded implementation flow, standard verification.
+- **Complex:** Full SCR linkage, slice-based decomposition, and Workflow Runner orchestration.
+- **Pre-Sync Quorum:** PMA always facilitates. `tiny` defaults to `developer` + `tech_lead`; `standard` defaults to `business_analyst` + `technical_architect`; `complex` defaults to `business_analyst` + `technical_architect` + `tech_lead`; add `ui_ux_designer` for UI/UX-facing work.
+
 ### 3. Operational Flow (Two-Phase Execution)
 
 The workflow is divided into a **Negotiation Phase** (Human-involved) and an **Autonomous Implementation Phase** (Agent-driven).
@@ -27,7 +37,7 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and an **A
 #### Phase 2: Autonomous Implementation (Agent-Centric)
 4.  **Batch Initiation:** The PO identifies one or more **Approved SCRs** for implementation.
 5.  **Autonomous Cycle (Sequential Execution):** The PMA processes tasks one-by-one. A task MUST be fully completed (including commit and archiving) before the next task begins.
-    *   **Task Decomposition & Impact Mapping:** The PMA and **Technical Architect** review the SCR to map its **Impact Surface**. They then decompose the SCR into **Micro-Tasks**.
+    *   **Task Decomposition & Impact Mapping:** The PMA and **Technical Architect** review the SCR to map its **Impact Surface**. They then decompose the SCR into slice-based micro-tasks.
     *   **Sequential Loop:** For each Micro-Task:
         1. **Task Initiation:** Activate the task card.
         2. **Pre-Task Sync:** Confirm readiness.
@@ -36,30 +46,28 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and an **A
         5. **Commit & Archive:** Finalize code and registries.
     *   **Next Task:** Proceed to the next Micro-Task only after the previous one is in `tasks/done/`.
 
+### 3.1 Limited Parallelism (Shared Worktree)
+- One shared-worktree `implementation` task may be active at a time.
+- `investigation` and `spec` tasks may run in parallel with that implementation task when they do not edit the same delivery artifacts.
+- Until dedicated git worktree support lands, do not run two shared-worktree implementation tasks in parallel.
+
+### 4. Communication Protocols
+- **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the PMA. The PMA then facilitates the inquiry and relays the response.
+- **Dependency Management:** The PMA actively tracks and manages all task dependencies.
+- **Review & Feedback:** The PMA assigns review tasks to the designated reviewer agents. Feedback is processed and directed back to the original agent.
+- **Escalation:** Any persistent blockers or disagreements are escalated directly to the PMA.
+- **Orchestrated Discussion Workflow:** The PMA may create a new `Task`, reuse the resulting `session_id`, gather specialist input, and synthesize the final decision.
+- **Documentation as the Single Source of Truth:** All agents refer to project documentation in `docs/` as the primary authority, and the PMA ensures it stays current.
+- **Git Integration:** Agents use Git under PMA oversight and follow the repository's branching strategy.
+
 ### 5. Blocker Management
 If an autonomous task cannot proceed due to external factors or missing information:
 1.  **Move to Blocked:** The PMA moves the task folder to `tasks/blocked/`.
 2.  **Blocker Report:** The PMA creates a `BLOCKER.md` inside the task folder explaining exactly what is missing and what the PO needs to resolve.
 3.  **PO Notification:** The PMA informs the Product Owner at the end of the batch summary.
-6.  **Batch Completion:** The PMA provides a summary report to the PO only after the entire batch of SCRs is implemented.
-2.  **Orchestrated Communication Protocols:**
-    *   **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the Product Manager Agent. The PMA then facilitates the inquiry and relays the response.
-    *   **Dependency Management:** The PMA actively tracks and manages all task dependencies.
-    *   **Review & Feedback:** The PMA assigns review tasks to the designated reviewer agents. Feedback is processed and directed back to the original agent.
-    *   **Escalation:** Any persistent blockers or disagreements are escalated directly to the PMA.
-3.  **Team Huddle:**
-    *   Regular discussions on project status, documentation, and next steps occur during "Team Huddles" initiated by the PMA.
-4.  **Orchestrated Discussion Workflow:**
-    *   **PMA Initiation:** As the PMA, you will initiate an Orchestrated Discussion by creating a new `Task` and providing the problem statement. This generates a unique `session_id`.
-    *   **Agent Participation:** You then orchestrate subagent participation by invoking the `Task` tool for each, *explicitly re-using the `session_id`*.
-    *   **Synthesis:** Once all participating agents have provided input, you synthesize the discussion into a conclusive decision.
-5.  **Documentation as the Single Source of Truth:**
-    *   All agents refer to the project documentation (`docs/`) as the primary authority.
-    *   The PMA is responsible for ensuring documentation is up-to-date.
-6.  **Version Control System (Git) Integration:**
-    *   Agents utilize Git under the direct oversight of the PMA, adhering to the established branching strategy.
+4.  **Batch Completion:** The PMA provides a summary report to the PO only after the entire batch of SCRs is implemented.
 
-### 4. Verification Policies
+### 6. Verification Policies
 - **100% Pass Rate:** No task is complete if any test fails.
 - **Evidence-First:** Proof of work (screenshots, logs) must be provided for every UI or logic change.
 - **Documentation:** All architectural decisions must be updated in the `docs/` folder before a task is closed.

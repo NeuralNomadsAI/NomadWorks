@@ -11,7 +11,7 @@ const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 
-const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath }
+const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
 /**
  * Resolves <include:filename.md> markers recursively.
@@ -72,6 +72,38 @@ function toModelString(provider, model) {
     return `${p}/${m}`;
   }
   return m;
+}
+
+function readTaskMetadata(taskPath, worktree) {
+  if (!taskPath) return {};
+
+  const absoluteTaskPath = path.isAbsolute(taskPath)
+    ? taskPath
+    : path.join(worktree, taskPath);
+
+  if (!fs.existsSync(absoluteTaskPath)) return {};
+
+  try {
+    const raw = fs.readFileSync(absoluteTaskPath, "utf8");
+    const { data } = parseFrontmatter(raw);
+    return {
+      complexity: typeof data.complexity === "string" ? data.complexity.trim().toLowerCase() : undefined,
+      track: typeof data.track === "string" ? data.track.trim().toLowerCase() : undefined,
+      slice: typeof data.slice === "string" ? data.slice.trim().toLowerCase() : undefined,
+      status: typeof data.status === "string" ? data.status.trim().toLowerCase() : undefined
+    };
+  } catch {
+    return {};
+  }
+}
+
+function hasActiveImplementationWorkflow() {
+  for (const workflow of activeWorkflows.values()) {
+    if ((workflow.track || "implementation") === "implementation") {
+      return true;
+    }
+  }
+  return false;
 }
 
 export default async function NomadWorksPlugin(input) {
@@ -227,8 +259,8 @@ export default async function NomadWorksPlugin(input) {
         }
       }
     }),
-    nomadflow_run_workflow: tool({
-      description: "Start a new autonomous session for a workflow_runner to execute a specific task",
+     nomadflow_run_workflow: tool({
+      description: "Start a workflow_runner session for a complex task",
       args: {
         task_path: tool.schema.string().describe("Path to the task markdown file (e.g. tasks/todo/task_001.md)"),
         instructions: tool.schema.string().describe("Detailed instructions for the workflow_runner")
@@ -240,8 +272,11 @@ export default async function NomadWorksPlugin(input) {
         const pmaSessionId = context.sessionId || context.sessionID;
         if (!pmaSessionId) return "Error: PMA Session ID not found in context.";
 
-        if (activeWorkflows.size > 0) {
-          return "FAIL: A workflow session is already running. You MUST wait for it to finish before starting a new one.";
+        const taskMeta = readTaskMetadata(args.task_path, context.worktree);
+        const workflowTrack = taskMeta.track || "implementation";
+
+        if (workflowTrack === "implementation" && hasActiveImplementationWorkflow()) {
+          return "FAIL: A shared-worktree implementation workflow is already running. You may continue investigation or spec work separately, but only one implementation workflow can own the shared worktree at a time.";
         }
 
         try {
@@ -251,14 +286,27 @@ export default async function NomadWorksPlugin(input) {
           });
           const sessionId = sessionResult.data.id;
 
-          activeWorkflows.set(sessionId, { pmaSessionId, taskPath: args.task_path });
+          activeWorkflows.set(sessionId, { pmaSessionId, taskPath: args.task_path, track: workflowTrack });
           
-          const initialText = `Task File: ${args.task_path}\n\nInstructions: ${args.instructions}\n\nPlease execute the full lifecycle (Sync -> Implementation -> Commit -> Archive) and provide a final summary.`;
+          const metadataSummary = [
+            taskMeta.complexity ? `Complexity: ${taskMeta.complexity}` : null,
+            workflowTrack ? `Track: ${workflowTrack}` : null,
+            taskMeta.slice ? `Slice: ${taskMeta.slice}` : null,
+            taskMeta.status ? `Status: ${taskMeta.status}` : null
+          ].filter(Boolean).join("\n");
+
+          const lifecycleInstruction = workflowTrack === "implementation"
+            ? "Please execute the full lifecycle (Sync -> Implementation -> Commit -> Archive) and provide a final summary."
+            : workflowTrack === "spec"
+              ? "Please execute the full spec lifecycle for this task, update the required documentation artifacts, and provide a final summary."
+              : "Please execute the investigation lifecycle for this task, capture findings clearly, and provide a final summary.";
+
+          const initialText = `Task File: ${args.task_path}\n${metadataSummary ? `\n${metadataSummary}` : ""}\n\nInstructions: ${args.instructions}\n\n${lifecycleInstruction}`;
           
           // Start monitoring in background (async)
           startAndMonitorWorkflow(sessionId, pmaSessionId, initialText, args.task_path);
 
-          return `SUCCESS: Workflow Runner session started. ID: ${sessionId}\nInstructions sent for ${args.task_path}. You will be notified on completion in this session (${pmaSessionId}).`;
+          return `SUCCESS: Workflow Runner session started. ID: ${sessionId}\nTrack: ${workflowTrack}\nInstructions sent for ${args.task_path}. You will be notified on completion in this session (${pmaSessionId}).`;
         } catch (e) {
           console.error("[NomadFlow] Failed to start workflow session:", e);
           return `FAIL: Failed to initiate session: ${e.message}`;

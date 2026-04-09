@@ -25,6 +25,7 @@ Quick links:
 - Configuration: `docs/setup/CONFIGURATION.md`
 - Workflow agents: `docs/guides/AGENTS.md`
 - Workflow model: `docs/guides/WORKFLOW.md`
+- Documentation structure: `docs/core/documentation_structure.md`
 
 ## Workflow Agents
 

@@ -60,3 +60,15 @@ status: proposed
 tasks: []
 ---
 ```
+
+## Documentation lookup
+
+When deciding where documentation belongs:
+
+- use `docs/product/` for whole-product truth
+- use `docs/domains/` for stable product areas that contain multiple features
+- use `docs/features/` for one concrete capability
+- use `docs/architecture/` for technical design and cross-cutting engineering decisions
+- use `docs/scrs/` for proposed and approved changes, not steady-state truth
+
+See `docs/core/documentation_structure.md` for the canonical rules.

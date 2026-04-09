@@ -17,6 +17,14 @@ parent: null
 - **Track:** `[implementation | investigation | spec]`
 - **Slice:** `[foundation | core | logic | ui | polish | qa | docs]`
 
+## Objective
+[Short description of the intended outcome and scope.]
+
+## Acceptance Criteria
+- [ ] [Overall success condition 1]
+- [ ] [Overall success condition 2]
+- [ ] [Overall success condition 3]
+
 ### Source Authority (MANDATORY)
 *   **Spec Reference:** [Commit Hash or SCR ID from documentation update]
 *   **Documentation:** [Link to updated SPECIFICATION.md or FEATURES_LIST.md]
@@ -34,10 +42,10 @@ parent: null
   * Add `tech_lead` to `standard` tasks when technical risk or cross-cutting impact is elevated.
 * [ ] Required specialists participated in pre-sync.
 
-### Sub-Tasks
-* [ ] Sub-Task: Implementation - `tasks/todo/subtask_1.md`
-* [ ] Sub-Task: QA Engineer Test Strategy Development - `tasks/todo/subtask_2.md`
-* [ ] Sub-Task: QA Engineer Test Development - `tasks/todo/subtask_3.md`
+### Decomposition (complex only)
+* Leave this section empty for `tiny` and `standard` tasks.
+* Use this section only when `complexity: complex`.
+* Add slice-based subtasks here as needed.
 
 ### Slice Planning
 * **Use one primary slice for `tiny` and `standard` tasks.**

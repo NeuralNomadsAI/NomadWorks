@@ -108,4 +108,5 @@ Every task MUST ensure the following files are updated if relevant:
 | **Tech Guidelines** | `docs/core/technical_guidelines.md` | Tech Lead / Architect |
 | **CodeMap** | `codemap.yml` | Developer / Architect |
 
+<include:docs/core/documentation_structure.md>
 <include:docs/core/task_model.md>

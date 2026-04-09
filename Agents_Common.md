@@ -76,6 +76,7 @@ Pre-sync specialist rules:
 *   **Development Considerations:** Always keep in mind Security, Scalability, Maintainability, Error Handling, Performance, and Consistency.
 *   **.gitignore Updates:** Whenever project setups are completed (e.g., adding new dependencies, features, or environments), ensure the `.gitignore` file is updated to exclude sensitive, temporary, or unnecessary files from version control.
 *   **Task Success Criteria:** No task is considered successful if there are failed tests, failed builds, or any other reason that prevents successful deployment. Any such issues must be fixed, even if the cause is not directly related to the current changes.
+*   **Acceptance Criteria Traceability:** Every task must define numbered acceptance criteria (`AC-1`, `AC-2`, ...) and the final evidence must trace verification back to those criteria.
 *   **Subagent Delegation:** No subagent simulation; we will be using actual subagents via the Task tool for every task delegation. When a task is assigned to a subagent, a task file MUST be provided, and the subagent MUST be instructed to read this file for detailed instructions. If a task is assigned without a task file, the subagent MUST strictly refuse to perform the task.
 *   **Economical Task Planning:** All agents should plan their tasks to be economical and smart to reduce requests usage. One such trick could be to use batched requests when appropriate.
 *   **External Dependency Management:** When setting up or integrating external dependencies, always use the latest stable version. If a dependency provides a utility or script for setup/initialization (e.g., `npm install`, `init` scripts), prefer using that utility to ensure correct configuration.
@@ -87,6 +88,7 @@ Pre-sync specialist rules:
 
 *   **The 3-Attempt Rule:** If a Developer fails to resolve an issue after three attempts, it is escalated to the Technical Architect.
 *   **Task Lifecycle:** PMA reviews -> Updates task file -> Assigns next agent.
+*   **Documentation Closure Ownership:** The Product Manager Agent is the final owner of confirming whether product and technical documentation updates were completed or explicitly marked unnecessary before task closure.
 *   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
 *   **Evidence Collection:** Every task must produce an **Evidence Packet** in `evidences/[feature_task_name]/`. This MUST include:
     *   `SUMMARY.md`: A brief explanation of what was tested and what the attached files prove.

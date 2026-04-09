@@ -21,14 +21,20 @@ parent: null
 [Short description of the intended outcome and scope.]
 
 ## Acceptance Criteria
-- [ ] [Overall success condition 1]
-- [ ] [Overall success condition 2]
-- [ ] [Overall success condition 3]
+- [ ] AC-1: [Primary behavioral or task outcome]
+- [ ] AC-2: [Secondary outcome, validation, or edge-case requirement]
+- [ ] AC-3: Relevant verification is completed and evidence is recorded against each acceptance criterion.
+- [ ] AC-4: Product documentation reflects the latest state of the application for this change, or this task explicitly records that no product-truth update was required.
+- [ ] AC-5: Technical documentation reflects any architectural or implementation-significant change, or this task explicitly records that no technical-truth update was required.
 
 ### Source Authority (MANDATORY)
 *   **Spec Reference:** [Commit Hash or SCR ID from documentation update]
 *   **Documentation:** [Link to updated SPECIFICATION.md or FEATURES_LIST.md]
 *   **SCR Link:** Use `null` only for `tiny` work that does not change product behavior or shared specifications.
+
+### Documentation Impact
+* **Product Documentation:** [List updated files or state `No product-truth update required`]
+* **Technical Documentation:** [List updated files or state `No technical-truth update required`]
 
 ### Pre Sync
 * **PMA Facilitator:** The Product Manager always runs the sync and records the decision.
@@ -62,7 +68,7 @@ parent: null
 ### Verification
 * [ ] Tech Lead: Functional & Behavioral Verification
 * [ ] UI / UX Designer: Visual UI/UX Review
-* [ ] Product Manager: Evidence Verification (Screenshots/Logs)
+* [ ] Product Manager: Acceptance Criteria and Evidence Coverage Verification
 * [ ] User: Final Approval
 
 ### Finalization
@@ -70,6 +76,7 @@ parent: null
 * [ ] [Assigned Agent]: Documentation Update (Update relevant docs in `docs/`)
 * [ ] Technical Architect: Documentation Verification - *[Comment: ]*
 * [ ] Tech Lead: Code Commit
+* [ ] Product Manager: Documentation Closure Verification
 * [ ] Product Manager: Task Archiving
 
 ### Status: [todo / in_progress / review / done / blocked]

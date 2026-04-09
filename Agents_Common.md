@@ -44,28 +44,13 @@ Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlight
 
 ## 3.1 Task Model
 
-Every agent MUST read the task frontmatter first and respect its `complexity`, `track`, and `slice`.
+Every agent MUST read the task frontmatter first and follow the canonical task-routing rules in `docs/core/task_model.md`.
 
-- **Complexity:** `tiny`, `standard`, `complex`
-- **Track:** `implementation`, `investigation`, `spec`
-- **Slice:** `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`
+That document defines:
 
-Shared routing rules:
-
-- `tiny` work should remain narrowly scoped within one primary slice.
-- `standard` work should stay bounded and keep one dominant slice.
-- `complex` work should be decomposed into slice-based subtasks.
-- Agents should execute only the assigned slice or subtask unless the PMA explicitly broadens the scope.
-
-Pre-sync specialist rules:
-
-- The `product_manager` always facilitates task discussion and does not need to be counted in the specialist quorum.
-- `tiny` technical work should include `developer` and `tech_lead`.
-- Add `business_analyst` to `tiny` work when product behavior, copy intent, or requirements are affected.
-- Add `ui_ux_designer` to any task that affects UI, UX, or other user-facing interface behavior.
-- `standard` work should include `business_analyst` and `technical_architect`.
-- Add `tech_lead` to `standard` work when technical risk or cross-cutting impact is elevated.
-- `complex` work should include `business_analyst`, `technical_architect`, and `tech_lead`.
+- `complexity`, `track`, and `slice`
+- routing and decomposition rules
+- pre-sync specialist defaults
 
 ## 4. Operational Guidelines
 

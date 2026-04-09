@@ -15,14 +15,11 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 - **Task Template:** All tasks must follow the standard `task-template.md`.
 
 ### 2.1 Task Routing Model
-- **Complexity:** `tiny`, `standard`, `complex`
-- **Track:** `implementation`, `investigation`, `spec`
-- **Slice:** `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`
-- **Usage Rule:** Complexity determines process weight, track determines the nature of the work, and slice identifies the dominant work surface.
-- **Tiny:** Lightweight task card, direct specialist delegation, lightweight verification.
-- **Standard:** Normal task file, bounded implementation flow, standard verification.
-- **Complex:** Full SCR linkage, slice-based decomposition, and Workflow Runner orchestration.
-- **Pre-Sync Quorum:** PMA always facilitates. `tiny` defaults to `developer` + `tech_lead`; `standard` defaults to `business_analyst` + `technical_architect`; `complex` defaults to `business_analyst` + `technical_architect` + `tech_lead`; add `ui_ux_designer` for UI/UX-facing work.
+- The canonical task-routing definitions live in `docs/core/task_model.md`.
+- `tiny` work stays lightweight and direct.
+- `standard` work stays bounded and uses the normal delivery path.
+- `complex` implementation work uses slice-based decomposition and `workflow_runner`.
+- PMA always facilitates pre-sync, while the required specialist quorum follows the defaults in `docs/core/task_model.md`.
 
 ### 3. Operational Flow (Two-Phase Execution)
 

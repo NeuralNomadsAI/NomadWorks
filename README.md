@@ -21,11 +21,11 @@ Initialization creates `.codenomad/nomadworks.yaml`. NomadWorks reads this file 
 
 Quick links:
 
-- Installation: `docs/setup/INSTALLATION.md`
-- Configuration: `docs/setup/CONFIGURATION.md`
-- Workflow agents: `docs/guides/AGENTS.md`
-- Workflow model: `docs/guides/WORKFLOW.md`
-- Documentation structure: `docs/core/documentation_structure.md`
+- [Installation](docs/setup/INSTALLATION.md)
+- [Configuration](docs/setup/CONFIGURATION.md)
+- [Workflow Agents](docs/guides/AGENTS.md)
+- [Workflow Model](docs/guides/WORKFLOW.md)
+- [Documentation Structure](docs/core/documentation_structure.md)
 
 ## Workflow Agents
 

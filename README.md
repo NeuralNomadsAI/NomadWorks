@@ -88,19 +88,22 @@ flowchart TD
     E --> I{Gate 3:<br/>Complexity?}
     I -->|tiny| J[Stage 4A: Tiny path<br/>PMA direct delegation]
     I -->|standard| K[Stage 4B: Standard path<br/>PMA orchestrated bounded delivery]
-    I -->|complex| L[Stage 4C: Complex path<br/>Workflow Runner owns end-to-end execution]
+    I -->|complex| L[Stage 4C: Complex path<br/>PMA starts separate Workflow Runner session]
 
     J --> M[Stage 5: Pre-sync gate<br/>Developer + Tech Lead<br/>Add BA if product truth changes<br/>Add UI/UX if interface changes]
     K --> N[Stage 5: Pre-sync gate<br/>Business Analyst + Technical Architect<br/>Add Tech Lead if risk is elevated<br/>Add UI/UX if interface changes]
-    L --> O[Stage 5: Pre-sync gate<br/>Business Analyst + Technical Architect + Tech Lead<br/>Add UI/UX for interface slices]
+    L --> O[Stage 5: Runner session executes independently<br/>Workflow Runner handles pre-sync and slice orchestration]
+    L --> L2[Stage 4D: PMA remains free<br/>PMA waits for runner completion notification]
 
     M --> P[Stage 6: Execution<br/>Assigned specialist implements or investigates]
     N --> Q[Stage 6: Execution<br/>PMA coordinates specialist handoffs]
-    O --> R[Stage 6: Execution<br/>Workflow Runner coordinates slice-based subtasks]
+    O --> R[Stage 6: Execution<br/>Workflow Runner coordinates slice-based subtasks in its own session]
 
     P --> S[Stage 7: Verification and evidence<br/>Developer or specialist + QA or Tech Lead]
     Q --> S
     R --> S
+    S --> L3[Stage 7B: Runner notifies PMA on completion]
+    L2 --> L3
 
     S --> T{Gate 4:<br/>All ACs covered with evidence?}
     T -->|No| U[Return for fixes or clarification]

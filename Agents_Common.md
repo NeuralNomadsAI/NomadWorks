@@ -56,6 +56,7 @@ That document defines:
 
 *   **Documentation Reading:** Whenever reading any file under `docs/` or `tasks/`, the file MUST be read fully to ensure complete understanding of the context and requirements. 
 *   **Role-Specific Guidelines:** Every agent is responsible for reading their specific guideline file from `docs/core/` at the start of their session (e.g., `developer_guidelines.md`, `qa_guidelines.md`).
+*   **Signed Agent Messages:** Agent-to-agent interactions must begin with a signed first message that clearly identifies the sending agent. If a message does not begin with an agent signature, agents should assume they are speaking directly with the user.
 *   **Pre-task Clarification:** Before starting any task, thoroughly review requirements. If anything is missing, ambiguous, or insufficient, immediately stop and clearly state what is needed, requesting clarification from the manager agent. Do not proceed until all requirements are clear.
 *   **Sync-up Mode Evaluation:** When in Sync-up Mode, critically evaluate the provided task definition for completeness and clarity. Identify missing information and explain its cruciality.
 *   **Development Considerations:** Always keep in mind Security, Scalability, Maintainability, Error Handling, Performance, and Consistency.

@@ -25,11 +25,17 @@ Minimal example:
 }
 ```
 
-## 3. Initialize the repository
+## 3. Start with PMA
 
-After the plugin loads, run `nomadworks_init` from the repository you want to enable.
+After the plugin loads, open the repository you want to enable and start talking to the `product_manager` agent (PMA).
 
-This creates:
+PMA is the default orchestrator and will help you set up the repository for NomadWorks. If the repository has not been initialized yet, PMA can trigger the required setup flow on your behalf.
+
+You do not need to manually run NomadWorks initialization commands as a first step.
+
+## 4. Repository initialization artifacts
+
+When PMA initializes the repository, NomadWorks creates:
 
 - `.codenomad/nomadworks.yaml`
 - `codemap.yml`
@@ -38,7 +44,7 @@ This creates:
 - `docs/scrs/current.md`
 - `docs/scrs/done.md`
 
-## 4. Configure NomadWorks
+## 5. Configure NomadWorks
 
 Edit `.codenomad/nomadworks.yaml` to set defaults, features, and per-agent overrides.
 

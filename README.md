@@ -15,11 +15,13 @@ Add the plugin to your OpenCode config:
 }
 ```
 
-Then restart OpenCode and run `nomadworks_init` inside the target repository.
+Then restart OpenCode, open the target repository, and start talking to the `product_manager` agent (PMA).
+
+PMA will guide the repository setup flow and, when needed, initialize NomadWorks inside the repo for you. The user does not need to manually run NomadWorks commands to get started.
 
 ## Configure
 
-Initialization creates `.codenomad/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, and per-agent overrides.
+During setup, PMA can initialize the repository and create `.codenomad/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, and per-agent overrides.
 
 Quick links:
 

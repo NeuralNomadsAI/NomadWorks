@@ -2,6 +2,8 @@
 
 NomadWorks reads repository-local configuration from `.codenomad/nomadworks.yaml`.
 
+This file is typically created during the PMA-led repository setup flow.
+
 ## Minimal config
 
 ```yaml

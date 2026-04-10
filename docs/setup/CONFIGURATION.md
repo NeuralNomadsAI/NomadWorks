@@ -8,6 +8,7 @@ This file is typically created during the PMA-led repository setup flow.
 
 ```yaml
 enabled: true
+team_mode: full
 
 defaults:
   # provider: openai
@@ -25,9 +26,24 @@ agents:
 ## Top-level sections
 
 - `enabled`: Turns the NomadWorks agent set on for the repository.
+- `team_mode`: The supported team preset. Use `reduced` for PMA + BA + Tech Lead only, or `full` for the complete collective. If omitted in an existing repository, NomadWorks defaults to `full`.
 - `defaults`: Shared defaults for providers, models, permissions, and other agent config fields.
 - `features`: Plugin feature flags such as debug dumps and validation behavior.
 - `agents`: Per-agent enablement and overrides.
+
+## Supported team modes
+
+### `reduced`
+
+- Enabled by default: `product_manager`, `business_analyst`, `tech_lead`
+- Intended for: `tiny` and `standard` tasks in simple repositories
+- Not supported: `complex` work and `workflow_runner`
+
+### `full`
+
+- Enables the full NomadWorks Collective by default
+- Intended for: repositories that need the complete role set, including `workflow_runner`
+- Supports: `tiny`, `standard`, and `complex`
 
 ## Common uses
 
@@ -47,6 +63,12 @@ agents:
   reviewer:
     enabled: false
 ```
+
+Mandatory agents cannot be disabled:
+
+- `product_manager`
+- `business_analyst`
+- `tech_lead`
 
 ### Extend agent tools
 

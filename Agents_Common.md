@@ -59,6 +59,7 @@ That document defines:
 *   **Pre-task Clarification:** Before starting any task, thoroughly review requirements. If anything is missing, ambiguous, or insufficient, immediately stop and clearly state what is needed, requesting clarification from the manager agent. Do not proceed until all requirements are clear.
 *   **Sync-up Mode Evaluation:** When in Sync-up Mode, critically evaluate the provided task definition for completeness and clarity. Identify missing information and explain its cruciality.
 *   **Development Considerations:** Always keep in mind Security, Scalability, Maintainability, Error Handling, Performance, and Consistency.
+*   **Concise Communication:** Agent responses should be brief, direct, and non-repetitive. Do not restate the same point multiple times, and do not become overly verbose unless the user explicitly asks for more detail.
 *   **.gitignore Updates:** Whenever project setups are completed (e.g., adding new dependencies, features, or environments), ensure the `.gitignore` file is updated to exclude sensitive, temporary, or unnecessary files from version control.
 *   **Task Success Criteria:** No task is considered successful if there are failed tests, failed builds, or any other reason that prevents successful deployment. Any such issues must be fixed, even if the cause is not directly related to the current changes.
 *   **Acceptance Criteria Traceability:** Every task must define numbered acceptance criteria (`AC-1`, `AC-2`, ...) and the final evidence must trace verification back to those criteria.

@@ -10,6 +10,8 @@ import { nomadworks_validate_logic } from "./validate_logic.js";
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
+const MANDATORY_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
+const REDUCED_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
@@ -106,6 +108,71 @@ function hasActiveImplementationWorkflow() {
   return false;
 }
 
+function normalizeTeamMode(value) {
+  if (typeof value !== "string") return "full";
+  const normalized = value.trim().toLowerCase();
+  return normalized === "reduced" ? "reduced" : "full";
+}
+
+function isAgentEnabledForTeamMode(agentId, teamMode) {
+  if (teamMode === "full") return true;
+  return REDUCED_MODE_AGENTS.has(agentId);
+}
+
+function applyTeamConfigRules(repoCfg) {
+  repoCfg.agents ??= {};
+  repoCfg.team_mode = normalizeTeamMode(repoCfg.team_mode);
+
+  for (const id of MANDATORY_AGENTS) {
+    if (repoCfg.agents[id]?.enabled === false) {
+      console.warn(`[NomadWorks] '${id}' is mandatory and cannot be disabled. Ignoring override.`);
+      repoCfg.agents[id] = { ...repoCfg.agents[id], enabled: true };
+    }
+  }
+
+  return repoCfg;
+}
+
+function isAgentEffectivelyEnabled(agentId, repoCfg) {
+  if (MANDATORY_AGENTS.has(agentId)) return true;
+  const override = repoCfg.agents?.[agentId];
+  if (override && typeof override.enabled === "boolean") {
+    return override.enabled;
+  }
+  return isAgentEnabledForTeamMode(agentId, repoCfg.team_mode);
+}
+
+function getOperatingTeamMode(repoCfg) {
+  const hasArchitect = isAgentEffectivelyEnabled("technical_architect", repoCfg);
+  const hasRunner = isAgentEffectivelyEnabled("workflow_runner", repoCfg);
+  return hasArchitect && hasRunner ? "full" : "reduced";
+}
+
+function readResolvedFile(relativePath, worktree) {
+  const repoPath = path.join(worktree, relativePath);
+  const bundlePath = path.join(PKG_ROOT, relativePath);
+  const filePath = fs.existsSync(repoPath) ? repoPath : bundlePath;
+  if (!fs.existsSync(filePath)) return "";
+  return resolveIncludes(fs.readFileSync(filePath, "utf8"), worktree, PKG_ROOT).trim();
+}
+
+function getModePromptFragment(agentId, operatingTeamMode, worktree) {
+  const fragmentMap = {
+    product_manager: {
+      reduced: "docs/core/pma_mode_reduced.md",
+      full: "docs/core/pma_mode_full.md"
+    },
+    tech_lead: {
+      reduced: "docs/core/tech_lead_mode_reduced.md",
+      full: "docs/core/tech_lead_mode_full.md"
+    }
+  };
+
+  const fragmentPath = fragmentMap[agentId]?.[operatingTeamMode];
+  if (!fragmentPath) return "";
+  return readResolvedFile(fragmentPath, worktree);
+}
+
 export default async function NomadWorksPlugin(input) {
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = path.join(worktree, ".nomadworks", "agents");
@@ -120,6 +187,8 @@ export default async function NomadWorksPlugin(input) {
       console.error(`[NomadWorks] Failed to parse config at ${configPath}:`, e);
     }
   }
+  repoCfg = applyTeamConfigRules(repoCfg);
+  const operatingTeamMode = getOperatingTeamMode(repoCfg);
 
   const startAndMonitorWorkflow = async (sessionId, pmaSessionId, initialText, taskPath = null) => {
     const client = input.client;
@@ -180,8 +249,15 @@ export default async function NomadWorksPlugin(input) {
   const tools = {
     nomadworks_init: tool({
       description: "Initialize the NomadWorks workflow and CodeMap in the current repository",
-      args: {},
+      args: {
+        team_mode: tool.schema.string().describe("Team mode to initialize: reduced or full")
+      },
       async execute(args, context) {
+        const requestedTeamMode = typeof args.team_mode === "string" ? args.team_mode.trim().toLowerCase() : "";
+        if (requestedTeamMode !== "reduced" && requestedTeamMode !== "full") {
+          return "Error: team_mode must be either 'reduced' or 'full'.";
+        }
+
         const cfgDir = path.join(context.worktree, ".codenomad");
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
 
@@ -198,11 +274,13 @@ export default async function NomadWorksPlugin(input) {
         }
 
         let nomadworksConfig = fs.readFileSync(nomadworksTmplPath, "utf8");
+        nomadworksConfig = nomadworksConfig.replace("{{teamMode}}", requestedTeamMode);
         
         // Append dynamically discovered agents to the template
         let agentsSection = "";
         for (const id of agentIds) {
-          agentsSection += `  ${id}:\n    enabled: true\n`;
+          const enabled = isAgentEnabledForTeamMode(id, requestedTeamMode) ? "true" : "false";
+          agentsSection += `  ${id}:\n    enabled: ${enabled}\n`;
         }
         nomadworksConfig = nomadworksConfig.replace("agents:", "agents:\n" + agentsSection);
 
@@ -244,7 +322,7 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
-        return "NomadWorks initialized: .codenomad/nomadworks.yaml, registries, and codemap.yml created.";
+        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .codenomad/nomadworks.yaml, registries, and codemap.yml created.`;
       }
     }),
     nomadworks_validate: tool({
@@ -268,6 +346,10 @@ export default async function NomadWorksPlugin(input) {
       async execute(args, context) {
         const client = input.client;
         if (!client) return "Error: OpenCode client not available in plugin context.";
+
+        if (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full") {
+          return "FAIL: Workflow Runner is unavailable in the current team configuration. Switch to full team mode to run complex workflows.";
+        }
 
         const pmaSessionId = context.sessionId || context.sessionID;
         if (!pmaSessionId) return "Error: PMA Session ID not found in context.";
@@ -322,6 +404,10 @@ export default async function NomadWorksPlugin(input) {
       async execute(args, context) {
         const client = input.client;
         if (!client) return "Error: OpenCode client not available.";
+
+        if (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full") {
+          return "FAIL: Workflow Runner is unavailable in the current team configuration. Switch to full team mode to send workflow runner prompts.";
+        }
 
         const pmaSessionId = context.sessionId || context.sessionID;
         if (!pmaSessionId) return "Error: PMA Session ID not found.";
@@ -417,7 +503,7 @@ export default async function NomadWorksPlugin(input) {
           }
 
           const agentOverride = repoCfg.agents?.[id] || {};
-          if (nomadworksActive && agentOverride.enabled === false) continue;
+          if (nomadworksActive && !isAgentEffectivelyEnabled(id, repoCfg)) continue;
 
           const filePath = path.join(agentsDir, file);
           let rawContent;
@@ -429,7 +515,11 @@ export default async function NomadWorksPlugin(input) {
           }
 
           const { data, body } = parseFrontmatter(rawContent);
-          const finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
+          let finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
+          const modePromptFragment = getModePromptFragment(id, operatingTeamMode, worktree);
+          if (modePromptFragment) {
+            finalPrompt = `${finalPrompt}\n\n${modePromptFragment}`;
+          }
           const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
           const model = agentOverride.model || data.model || repoCfg.defaults?.model;
           
@@ -464,6 +554,13 @@ export default async function NomadWorksPlugin(input) {
           if (Array.isArray(agentOverride.tools_remove)) {
             if (agentConfig.tools) {
               for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
+            }
+          }
+
+          if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
+            if (agentConfig.tools) {
+              delete agentConfig.tools.nomadflow_run_workflow;
+              delete agentConfig.tools.nomadflow_prompt_workflow;
             }
           }
 

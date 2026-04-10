@@ -31,6 +31,11 @@ After the plugin loads, open the repository you want to enable and start talking
 
 PMA is the default orchestrator and will help you set up the repository for NomadWorks. If the repository has not been initialized yet, PMA can trigger the required setup flow on your behalf.
 
+During setup, PMA should ask whether you want:
+
+- `reduced` team mode for simple repositories and `tiny` / `standard` work
+- `full` team mode for the complete collective, including `complex` workflows
+
 You do not need to manually run NomadWorks initialization commands as a first step.
 
 ## 4. Repository initialization artifacts

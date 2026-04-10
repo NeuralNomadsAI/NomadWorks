@@ -1,5 +1,6 @@
 # NomadWorks repository configuration
 enabled: true
+team_mode: {{teamMode}}
 
 defaults:
   # provider: openai

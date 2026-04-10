@@ -30,6 +30,16 @@ NomadWorks uses three task complexity levels and three work tracks.
 - Use `standard` for the normal delivery path when a task is still bounded and does not require decomposition.
 - Use `complex` when the work needs an approved SCR, multiple handoffs, or slice-based subtasks.
 
+## Team modes
+
+- `reduced`: supports `tiny` and `standard` only, using `product_manager`, `business_analyst`, and `tech_lead`
+- `full`: supports `tiny`, `standard`, and `complex`, including `workflow_runner`
+
+See also:
+
+- `docs/guides/TEAM_MODE_REDUCED.md`
+- `docs/guides/TEAM_MODE_FULL.md`
+
 ## Current parallelism rule
 
 - One shared-worktree implementation task may run at a time.

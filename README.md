@@ -23,13 +23,29 @@ PMA will guide the repository setup flow and, when needed, initialize NomadWorks
 
 During setup, PMA can initialize the repository and create `.codenomad/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, and per-agent overrides.
 
+NomadWorks supports two team presets:
+
+- `reduced`: PMA + BA + Tech Lead for simple repositories and `tiny` / `standard` tasks
+- `full`: the complete collective, including advanced specialists and `workflow_runner`
+
+If `team_mode` is not set in an existing repository, NomadWorks treats it as `full` by default.
+
 Quick links:
 
 - [Installation](docs/setup/INSTALLATION.md)
 - [Configuration](docs/setup/CONFIGURATION.md)
 - [Workflow Agents](docs/guides/AGENTS.md)
 - [Workflow Model](docs/guides/WORKFLOW.md)
+- [Reduced Team Mode](docs/guides/TEAM_MODE_REDUCED.md)
+- [Full Team Mode](docs/guides/TEAM_MODE_FULL.md)
 - [Documentation Structure](docs/core/documentation_structure.md)
+
+## Team Modes
+
+| Team Mode | Available Agents | Supported Task Complexity | Flow Guide |
+| :--- | :--- | :--- | :--- |
+| `reduced` | `product_manager`, `business_analyst`, `tech_lead` | `tiny`, `standard` | [Reduced Team Mode](docs/guides/TEAM_MODE_REDUCED.md) |
+| `full` | Full NomadWorks Collective, including `workflow_runner`, `technical_architect`, `developer`, `qa_engineer`, `reviewer`, and `ui_ux_designer` | `tiny`, `standard`, `complex` | [Full Team Mode](docs/guides/TEAM_MODE_FULL.md) |
 
 ## Workflow Agents
 
@@ -78,52 +94,10 @@ In practice, SCRs help:
 
 ## Task Flow
 
-```mermaid
-flowchart TD
-    A[Stage 1: Intake<br/>PMA receives request] --> B{Gate 1:<br/>Track?}
+NomadWorks uses different operating flows depending on the configured team mode.
 
-    B -->|spec| C[Stage 2A: Spec definition<br/>PMA facilitates<br/>BA + Tech Lead draft or refine SCR]
-    C --> D{Gate 2:<br/>SCR approved?}
-    D -->|No| C
-    D -->|Yes| E[Stage 3: Implementation task created<br/>PMA sets complexity, track, slice]
-
-    B -->|investigation| F[Stage 2B: Investigation task created<br/>PMA assigns relevant specialist]
-    F --> G[Stage 3: Investigation execution<br/>Specialist or Workflow Runner gathers findings]
-    G --> H[Stage 4: Findings review gate<br/>PMA reviews outputs and next action]
-
-    B -->|implementation| E
-
-    E --> I{Gate 3:<br/>Complexity?}
-    I -->|tiny| J[Stage 4A: Tiny path<br/>PMA direct delegation]
-    I -->|standard| K[Stage 4B: Standard path<br/>PMA orchestrated bounded delivery]
-    I -->|complex| L[Stage 4C: Complex path<br/>PMA starts separate Workflow Runner session]
-
-    J --> M[Stage 5: Pre-sync gate<br/>Developer + Tech Lead<br/>Add BA if product truth changes<br/>Add UI/UX if interface changes]
-    K --> N[Stage 5: Pre-sync gate<br/>Business Analyst + Technical Architect<br/>Add Tech Lead if risk is elevated<br/>Add UI/UX if interface changes]
-    L --> O[Stage 5: Runner session executes independently<br/>Workflow Runner handles pre-sync and slice orchestration]
-    L --> L2[Stage 4D: PMA remains free<br/>PMA waits for runner completion notification]
-
-    M --> P[Stage 6: Execution<br/>Assigned specialist implements or investigates]
-    N --> Q[Stage 6: Execution<br/>PMA coordinates specialist handoffs]
-    O --> R[Stage 6: Execution<br/>Workflow Runner coordinates slice-based subtasks in its own session]
-
-    P --> S[Stage 7: Verification and evidence<br/>Developer or specialist + QA or Tech Lead]
-    Q --> S
-    R --> S
-    S -->|tiny or standard| T{Gate 4:<br/>All ACs covered with evidence?}
-    S -->|complex| L3[Stage 7B: Runner notifies PMA on completion]
-    L2 --> L3
-    L3 --> T
-
-    T -->|No| U[Return for fixes or clarification]
-    U --> M
-    T -->|Yes| V[Stage 8: Documentation closure<br/>Relevant agents update product and technical docs<br/>PMA verifies closure]
-
-    V --> W{Gate 5:<br/>Docs updated or explicitly not required?}
-    W -->|No| U
-    W -->|Yes| X[Stage 9: Commit and archive<br/>Tech Lead or workflow path commits<br/>PMA archives task and updates registries]
-```
-```
+- For the lightweight operating path, see [Reduced Team Mode](docs/guides/TEAM_MODE_REDUCED.md)
+- For the complete collective path, see [Full Team Mode](docs/guides/TEAM_MODE_FULL.md)
 
 ## Parallelism
 

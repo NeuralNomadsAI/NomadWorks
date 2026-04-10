@@ -8,7 +8,7 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 ### 2. File-Based Task Management
 - **Tasks Directory:** `tasks/`
 - **Central Registries:** 
-    *   `tasks/current.md`: The active dashboard. Tracks **Active**, **Todo**, and **Blocked** tasks.
+    *   `tasks/current.md`: The active dashboard. Tracks **Active Discussions**, **Active**, **Todo**, and **Blocked** tasks.
     *   `tasks/done.md`: The historical registry. Maps completed tasks to SCRs and commits.
 - **Subdirectories:** `todo/`, `blocked/`, `done/`.
 - **Active Task:** The single task currently being worked on resides in the root of the `tasks/` directory.
@@ -51,7 +51,7 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and an **A
 ### 4. Communication Protocols
 - **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the PMA. The PMA then facilitates the inquiry and relays the response.
 - **Dependency Management:** The PMA actively tracks and manages all task dependencies.
-- **Review & Feedback:** The PMA assigns review tasks to the designated reviewer agents. Feedback is processed and directed back to the original agent.
+- **Review & Feedback:** The PMA assigns review and verification work to the appropriate technical specialists, with Tech Lead remaining the default technical review authority.
 - **Escalation:** Any persistent blockers or disagreements are escalated directly to the PMA.
 - **Orchestrated Discussion Workflow:** The PMA may create a new `Task`, reuse the resulting `session_id`, gather specialist input, and synthesize the final decision.
 - **Documentation as the Single Source of Truth:** All agents refer to project documentation in `docs/` as the primary authority, and the PMA ensures it stays current.

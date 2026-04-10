@@ -56,11 +56,11 @@ agents:
     model: gpt-5.4
 ```
 
-### Disable an agent in a repo
+### Disable an optional agent in a repo
 
 ```yaml
 agents:
-  reviewer:
+  ui_ux_designer:
     enabled: false
 ```
 

@@ -45,7 +45,7 @@ Quick links:
 | Team Mode | Available Agents | Supported Task Complexity | Flow Guide |
 | :--- | :--- | :--- | :--- |
 | `mini` | `product_manager`, `business_analyst`, `tech_lead` | `tiny`, `standard` | [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md) |
-| `full` | Full NomadWorks Collective, including `workflow_runner`, `technical_architect`, `developer`, `qa_engineer`, `reviewer`, and `ui_ux_designer` | `tiny`, `standard`, `complex` | [Full Team Mode](docs/guides/TEAM_MODE_FULL.md) |
+| `full` | Full NomadWorks Collective, including `workflow_runner`, `technical_architect`, `developer`, `qa_engineer`, and `ui_ux_designer` | `tiny`, `standard`, `complex` | [Full Team Mode](docs/guides/TEAM_MODE_FULL.md) |
 
 ## Workflow Agents
 
@@ -58,7 +58,6 @@ The NomadWorks Collective operates like a role-based software development team:
 - `tech_lead` (Tech Lead): Behavioral verification and technical sign-off.
 - `developer` (Developer): Implementation and test authoring.
 - `qa_engineer` (QA Engineer): Verification and test coverage.
-- `reviewer` (Reviewer): Independent review.
 - `ui_ux_designer` (UI/UX Designer): Visual and interaction review.
 
 Together, these agents act as a coordinated delivery team rather than a loose set of tools. PMA manages the work, specialists own their disciplines, and the workflow enforces that major changes are specified, verified, and documented before closure.
@@ -70,6 +69,19 @@ Together, these agents act as a coordinated delivery team rather than a loose se
 - **Slice:** `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`
 
 Use `complex` for work that needs an approved SCR, slice-based decomposition, and `workflow_runner`. Keep `tiny` and `standard` tasks direct and bounded.
+
+## Discussion Handoffs
+
+NomadWorks also supports tracked discussion handoffs between `product_manager`, `business_analyst`, and `tech_lead`.
+
+When a direct discussion becomes workflow-relevant:
+
+- create or update a normal task file
+- assign it to the next responsible agent
+- record the reasoning in the task file's `Discussion Record`
+- track it in `tasks/current.md` under `Active Discussions`
+
+This keeps product and technical discussions durable, visible, and easy to hand over between agents instead of losing them in chat history.
 
 ## What Is An SCR?
 

@@ -311,7 +311,7 @@ export default async function NomadWorksPlugin(input) {
         const scrsDonePath = path.join(scrsDir, "done.md");
         
         if (!fs.existsSync(currentPath)) {
-          fs.writeFileSync(currentPath, "# Current Tasks (Backlog)\n\n## 🚀 Active\n- (None)\n\n## 📋 Todo\n- (None)\n\n## 🛑 Blocked\n- (None)\n", "utf8");
+          fs.writeFileSync(currentPath, "# Current Tasks (Backlog)\n\n## 💬 Active Discussions\n- (None)\n\n## 🚀 Active\n- (None)\n\n## 📋 Todo\n- (None)\n\n## 🛑 Blocked\n- (None)\n", "utf8");
         }
         if (!fs.existsSync(donePath)) {
           fs.writeFileSync(donePath, "# Completed Tasks (Registry)\n\n| Date | Task ID | SCR ID | Commit | Summary |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");

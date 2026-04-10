@@ -6,6 +6,8 @@ slice: logic
 status: todo
 scr: null
 parent: null
+assigned_to: product_manager
+handoff_from: null
 ---
 
 # Task: [Task ID] - [Short Description]
@@ -19,6 +21,10 @@ parent: null
 
 ## Objective
 [Short description of the intended outcome and scope.]
+
+## Ownership
+- **Assigned To:** `[product_manager | business_analyst | tech_lead | technical_architect | developer | qa_engineer | ui_ux_designer | workflow_runner]`
+- **Handoff From:** `[agent_name or null]`
 
 ## Acceptance Criteria
 - [ ] AC-1: [Primary behavioral or task outcome]
@@ -35,6 +41,17 @@ parent: null
 ### Documentation Impact
 * **Product Documentation:** [List updated files or state `No product-truth update required`]
 * **Technical Documentation:** [List updated files or state `No technical-truth update required`]
+
+## Discussion Record
+
+Use this section whenever PMA, BA, or Tech Lead need to hand work or reasoning to one another through the task file.
+
+### Entry 1
+- **From:** `[agent_name]`
+- **To:** `[agent_name]`
+- **Detailed Summary:** [Detailed summary of the discussion, reasoning, tradeoffs, and conclusions]
+- **Open Questions:** [List open questions or write `None`]
+- **Recommended Next Step:** [Exact thing the receiving agent should do next]
 
 ### Pre Sync
 * **PMA Facilitator:** The Product Manager always runs the sync and records the decision.

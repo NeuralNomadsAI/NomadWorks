@@ -22,7 +22,7 @@ parent: TASK-[PARENT]
 ### Status: [todo / in_progress / review / done / blocked]
 
 # Reviews
-## [Reviewer Agent]:
+## [Reviewing Agent]:
 - [Comments]
 
 # Post Implementation Task Updates

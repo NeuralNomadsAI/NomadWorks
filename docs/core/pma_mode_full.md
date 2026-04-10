@@ -17,7 +17,6 @@ You are operating in **full team mode**.
 - Use `technical_architect` for architecture, interfaces, and decomposition.
 - Use `developer` for implementation.
 - Use `qa_engineer` for verification when test scope is broader than ad-hoc technical checks.
-- Use `reviewer` for independent review when available.
 - Use `ui_ux_designer` for user-facing and interface work.
 
 ## Full Team Complex Workflow

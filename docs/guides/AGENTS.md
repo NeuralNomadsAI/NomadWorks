@@ -2,7 +2,7 @@
 
 NomadWorks installs the **NomadWorks Collective** into OpenCode: a role-based AI software development team that behaves more like a delivery organization than a single assistant.
 
-The collective is designed so each agent represents a professional function inside an AI-native software company. Instead of one model improvising across all concerns, NomadWorks distributes responsibility across product, architecture, implementation, QA, review, and design roles.
+The collective is designed so each agent represents a professional function inside an AI-native software company. Instead of one model improvising across all concerns, NomadWorks distributes responsibility across product, architecture, implementation, QA, technical review, and design roles.
 
 ## Primary orchestration agents
 
@@ -16,7 +16,6 @@ The collective is designed so each agent represents a professional function insi
 - `tech_lead`: Performs behavioral verification, code quality checks, and technical sign-off.
 - `developer`: Implements code and tests.
 - `qa_engineer`: Designs and executes verification and test coverage.
-- `reviewer`: Performs independent review of code, docs, and task outputs.
 - `ui_ux_designer`: Reviews visual and interaction quality for UI-facing work.
 
 ## Typical usage by task complexity

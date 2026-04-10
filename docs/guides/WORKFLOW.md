@@ -58,8 +58,18 @@ slice: logic
 status: todo
 scr: SCR-001
 parent: null
+assigned_to: product_manager
+handoff_from: null
 ---
 ```
+
+When PMA, BA, or Tech Lead need to hand workflow-relevant discussion context to one another, use a normal task file with:
+
+- `assigned_to` set to the next responsible agent
+- `handoff_from` set to the agent creating the handoff
+- a detailed `Discussion Record` section in the task body
+
+Track these task files under `Active Discussions` in `tasks/current.md` until they resolve into execution, SCR work, clarification, or closure.
 
 SCR files use similarly lightweight frontmatter:
 

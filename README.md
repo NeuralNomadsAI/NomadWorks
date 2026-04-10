@@ -51,29 +51,44 @@ Use `complex` for work that needs an approved SCR, slice-based decomposition, an
 
 ```mermaid
 flowchart TD
-    A[New Request] --> B{Track}
-    B -->|spec| C[Create or update SCR]
-    B -->|investigation| D[Create investigation task]
-    B -->|implementation| E[Create implementation task]
+    A[Stage 1: Intake<br/>PMA receives request] --> B{Gate 1:<br/>Track?}
 
-    C --> F{Approved?}
-    F -->|No| C
-    F -->|Yes| E
+    B -->|spec| C[Stage 2A: Spec definition<br/>PMA facilitates<br/>BA + Tech Lead draft or refine SCR]
+    C --> D{Gate 2:<br/>SCR approved?}
+    D -->|No| C
+    D -->|Yes| E[Stage 3: Implementation task created<br/>PMA sets complexity, track, slice]
 
-    E --> G{Complexity}
-    G -->|tiny| H[PMA direct delegation]
-    G -->|standard| I[PMA bounded delivery flow]
-    G -->|complex| J[Workflow Runner + slice-based subtasks]
+    B -->|investigation| F[Stage 2B: Investigation task created<br/>PMA assigns relevant specialist]
+    F --> G[Stage 3: Investigation execution<br/>Specialist or Workflow Runner gathers findings]
+    G --> H[Stage 4: Findings review gate<br/>PMA reviews outputs and next action]
 
-    D --> K[Findings and recommendations]
-    H --> L[Pre-sync with required specialists]
-    I --> L
-    J --> L
+    B -->|implementation| E
 
-    L --> M[Implementation or execution]
-    M --> N[Verification and evidence]
-    N --> O[PMA documentation closure check]
-    O --> P[Commit and archive]
+    E --> I{Gate 3:<br/>Complexity?}
+    I -->|tiny| J[Stage 4A: Tiny path<br/>PMA direct delegation]
+    I -->|standard| K[Stage 4B: Standard path<br/>PMA orchestrated bounded delivery]
+    I -->|complex| L[Stage 4C: Complex path<br/>Workflow Runner owns end-to-end execution]
+
+    J --> M[Stage 5: Pre-sync gate<br/>Developer + Tech Lead<br/>Add BA if product truth changes<br/>Add UI/UX if interface changes]
+    K --> N[Stage 5: Pre-sync gate<br/>Business Analyst + Technical Architect<br/>Add Tech Lead if risk is elevated<br/>Add UI/UX if interface changes]
+    L --> O[Stage 5: Pre-sync gate<br/>Business Analyst + Technical Architect + Tech Lead<br/>Add UI/UX for interface slices]
+
+    M --> P[Stage 6: Execution<br/>Assigned specialist implements or investigates]
+    N --> Q[Stage 6: Execution<br/>PMA coordinates specialist handoffs]
+    O --> R[Stage 6: Execution<br/>Workflow Runner coordinates slice-based subtasks]
+
+    P --> S[Stage 7: Verification and evidence<br/>Developer or specialist + QA or Tech Lead]
+    Q --> S
+    R --> S
+
+    S --> T{Gate 4:<br/>All ACs covered with evidence?}
+    T -->|No| U[Return for fixes or clarification]
+    U --> M
+    T -->|Yes| V[Stage 8: Documentation closure<br/>Relevant agents update product and technical docs<br/>PMA verifies closure]
+
+    V --> W{Gate 5:<br/>Docs updated or explicitly not required?}
+    W -->|No| U
+    W -->|Yes| X[Stage 9: Commit and archive<br/>Tech Lead or workflow path commits<br/>PMA archives task and updates registries]
 ```
 ```
 

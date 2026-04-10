@@ -47,6 +47,36 @@ Quick links:
 
 Use `complex` for work that needs an approved SCR, slice-based decomposition, and `workflow_runner`. Keep `tiny` and `standard` tasks direct and bounded.
 
+## Task Flow
+
+```mermaid
+flowchart TD
+    A[New Request] --> B{Track}
+    B -->|spec| C[Create or update SCR]
+    B -->|investigation| D[Create investigation task]
+    B -->|implementation| E[Create implementation task]
+
+    C --> F{Approved?}
+    F -->|No| C
+    F -->|Yes| E
+
+    E --> G{Complexity}
+    G -->|tiny| H[PMA direct delegation]
+    G -->|standard| I[PMA bounded delivery flow]
+    G -->|complex| J[Workflow Runner + slice-based subtasks]
+
+    D --> K[Findings and recommendations]
+    H --> L[Pre-sync with required specialists]
+    I --> L
+    J --> L
+
+    L --> M[Implementation or execution]
+    M --> N[Verification and evidence]
+    N --> O[PMA documentation closure check]
+    O --> P[Commit and archive]
+```
+```
+
 ## Parallelism
 
 Until dedicated git worktree support lands, NomadWorks supports limited parallelism:

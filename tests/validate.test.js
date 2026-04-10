@@ -105,6 +105,20 @@ describe("nomadworks_validate", () => {
     expect(result.ok).toBe(true); // Should ignore .md files in operational folders
   });
 
+  test("Ignores hidden tool-owned directory trees like .github/workflows", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      ".github": {
+        "workflows": {
+          "deploy.yml": "name: CI"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
   test("Fails when source file is not indexed in module codemap", async () => {
     const root = createTestEnv({
       "codemap.yml": "scope: repo\nmodules: [{path: src}]",

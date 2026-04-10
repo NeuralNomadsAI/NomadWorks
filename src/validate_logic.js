@@ -25,6 +25,11 @@ export async function nomadworks_validate_logic(worktree) {
     ".php", ".rb", ".swift", ".kt", ".m", ".sh", ".sql", ".yaml", ".yml", ".json", ".md"
   ];
 
+  const isHiddenTree = (relPath) => {
+    if (!relPath) return false;
+    return relPath.split(path.sep).some(part => part.startsWith("."));
+  };
+
   const isSourceDir = (dirPath) => {
     const items = fs.readdirSync(dirPath, { withFileTypes: true });
     for (const item of items) {
@@ -115,6 +120,7 @@ export async function nomadworks_validate_logic(worktree) {
   const walk = (dir) => {
     const relDir = path.relative(worktree, dir);
     if (relDir && ig.ignores(relDir)) return;
+    if (isHiddenTree(relDir)) return;
 
     const hasCodemap = fs.existsSync(path.join(dir, "codemap.yml"));
     const items = fs.readdirSync(dir, { withFileTypes: true });
@@ -137,9 +143,7 @@ export async function nomadworks_validate_logic(worktree) {
     const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));
 
     if (relDir !== "" && !hasCodemap && isSourceDir(dir) && !isOperational) {
-      if (!path.basename(dir).startsWith(".")) {
-        errors.push(`Missing CodeMap: Directory '${relDir}' contains source but has no codemap.yml.`);
-      }
+      errors.push(`Missing CodeMap: Directory '${relDir}' contains source but has no codemap.yml.`);
     }
 
     if (hasCodemap) validateMap(path.join(dir, "codemap.yml"));

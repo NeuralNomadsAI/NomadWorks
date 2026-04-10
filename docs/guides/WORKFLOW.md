@@ -32,12 +32,12 @@ NomadWorks uses three task complexity levels and three work tracks.
 
 ## Team modes
 
-- `reduced`: supports `tiny` and `standard` only, using `product_manager`, `business_analyst`, and `tech_lead`
+- `mini`: supports `tiny` and `standard` only, using `product_manager`, `business_analyst`, and `tech_lead`
 - `full`: supports `tiny`, `standard`, and `complex`, including `workflow_runner`
 
 See also:
 
-- `docs/guides/TEAM_MODE_REDUCED.md`
+- `docs/guides/TEAM_MODE_MINI.md`
 - `docs/guides/TEAM_MODE_FULL.md`
 
 ## Current parallelism rule

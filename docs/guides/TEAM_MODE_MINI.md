@@ -1,6 +1,6 @@
-# Reduced Team Mode
+# Mini Team Mode
 
-Reduced team mode is the lightest supported NomadWorks operating model.
+Mini team mode is the lightest supported NomadWorks operating model.
 
 ## Available Agents
 
@@ -18,7 +18,7 @@ Not supported:
 - `complex`
 - `workflow_runner`
 
-## Reduced Team Task Flow
+## Mini Team Task Flow
 
 ```text
 User request
@@ -30,7 +30,7 @@ User request
   -> Commit and archive
 ```
 
-## Reduced Team Responsibilities
+## Mini Team Responsibilities
 
 - **PMA:** orchestration, routing, closure, documentation closure verification
 - **BA:** requirements, acceptance criteria, product documentation

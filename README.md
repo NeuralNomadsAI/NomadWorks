@@ -25,7 +25,7 @@ During setup, PMA can initialize the repository and create `.codenomad/nomadwork
 
 NomadWorks supports two team presets:
 
-- `reduced`: PMA + BA + Tech Lead for simple repositories and `tiny` / `standard` tasks
+- `mini`: PMA + BA + Tech Lead for simple repositories and `tiny` / `standard` tasks
 - `full`: the complete collective, including advanced specialists and `workflow_runner`
 
 If `team_mode` is not set in an existing repository, NomadWorks treats it as `full` by default.
@@ -36,7 +36,7 @@ Quick links:
 - [Configuration](docs/setup/CONFIGURATION.md)
 - [Workflow Agents](docs/guides/AGENTS.md)
 - [Workflow Model](docs/guides/WORKFLOW.md)
-- [Reduced Team Mode](docs/guides/TEAM_MODE_REDUCED.md)
+- [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md)
 - [Full Team Mode](docs/guides/TEAM_MODE_FULL.md)
 - [Documentation Structure](docs/core/documentation_structure.md)
 
@@ -44,7 +44,7 @@ Quick links:
 
 | Team Mode | Available Agents | Supported Task Complexity | Flow Guide |
 | :--- | :--- | :--- | :--- |
-| `reduced` | `product_manager`, `business_analyst`, `tech_lead` | `tiny`, `standard` | [Reduced Team Mode](docs/guides/TEAM_MODE_REDUCED.md) |
+| `mini` | `product_manager`, `business_analyst`, `tech_lead` | `tiny`, `standard` | [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md) |
 | `full` | Full NomadWorks Collective, including `workflow_runner`, `technical_architect`, `developer`, `qa_engineer`, `reviewer`, and `ui_ux_designer` | `tiny`, `standard`, `complex` | [Full Team Mode](docs/guides/TEAM_MODE_FULL.md) |
 
 ## Workflow Agents
@@ -96,7 +96,7 @@ In practice, SCRs help:
 
 NomadWorks uses different operating flows depending on the configured team mode.
 
-- For the lightweight operating path, see [Reduced Team Mode](docs/guides/TEAM_MODE_REDUCED.md)
+- For the lightweight operating path, see [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md)
 - For the complete collective path, see [Full Team Mode](docs/guides/TEAM_MODE_FULL.md)
 
 ## Parallelism

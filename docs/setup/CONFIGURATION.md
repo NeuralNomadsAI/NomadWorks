@@ -26,14 +26,14 @@ agents:
 ## Top-level sections
 
 - `enabled`: Turns the NomadWorks agent set on for the repository.
-- `team_mode`: The supported team preset. Use `reduced` for PMA + BA + Tech Lead only, or `full` for the complete collective. If omitted in an existing repository, NomadWorks defaults to `full`.
+- `team_mode`: The supported team preset. Use `mini` for PMA + BA + Tech Lead only, or `full` for the complete collective. If omitted in an existing repository, NomadWorks defaults to `full`.
 - `defaults`: Shared defaults for providers, models, permissions, and other agent config fields.
 - `features`: Plugin feature flags such as debug dumps and validation behavior.
 - `agents`: Per-agent enablement and overrides.
 
 ## Supported team modes
 
-### `reduced`
+### `mini`
 
 - Enabled by default: `product_manager`, `business_analyst`, `tech_lead`
 - Intended for: `tiny` and `standard` tasks in simple repositories

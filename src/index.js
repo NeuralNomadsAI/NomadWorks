@@ -11,7 +11,7 @@ const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 const MANDATORY_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
-const REDUCED_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
+const MINI_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
@@ -111,12 +111,13 @@ function hasActiveImplementationWorkflow() {
 function normalizeTeamMode(value) {
   if (typeof value !== "string") return "full";
   const normalized = value.trim().toLowerCase();
-  return normalized === "reduced" ? "reduced" : "full";
+  if (normalized === "mini") return "mini";
+  return "full";
 }
 
 function isAgentEnabledForTeamMode(agentId, teamMode) {
   if (teamMode === "full") return true;
-  return REDUCED_MODE_AGENTS.has(agentId);
+  return MINI_MODE_AGENTS.has(agentId);
 }
 
 function applyTeamConfigRules(repoCfg) {
@@ -145,7 +146,7 @@ function isAgentEffectivelyEnabled(agentId, repoCfg) {
 function getOperatingTeamMode(repoCfg) {
   const hasArchitect = isAgentEffectivelyEnabled("technical_architect", repoCfg);
   const hasRunner = isAgentEffectivelyEnabled("workflow_runner", repoCfg);
-  return hasArchitect && hasRunner ? "full" : "reduced";
+  return hasArchitect && hasRunner ? "full" : "mini";
 }
 
 function readResolvedFile(relativePath, worktree) {
@@ -159,11 +160,11 @@ function readResolvedFile(relativePath, worktree) {
 function getModePromptFragment(agentId, operatingTeamMode, worktree) {
   const fragmentMap = {
     product_manager: {
-      reduced: "docs/core/pma_mode_reduced.md",
+      mini: "docs/core/pma_mode_mini.md",
       full: "docs/core/pma_mode_full.md"
     },
     tech_lead: {
-      reduced: "docs/core/tech_lead_mode_reduced.md",
+      mini: "docs/core/tech_lead_mode_mini.md",
       full: "docs/core/tech_lead_mode_full.md"
     }
   };
@@ -250,12 +251,12 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_init: tool({
       description: "Initialize the NomadWorks workflow and CodeMap in the current repository",
       args: {
-        team_mode: tool.schema.string().describe("Team mode to initialize: reduced or full")
+        team_mode: tool.schema.string().describe("Team mode to initialize: mini or full")
       },
       async execute(args, context) {
         const requestedTeamMode = typeof args.team_mode === "string" ? args.team_mode.trim().toLowerCase() : "";
-        if (requestedTeamMode !== "reduced" && requestedTeamMode !== "full") {
-          return "Error: team_mode must be either 'reduced' or 'full'.";
+        if (requestedTeamMode !== "mini" && requestedTeamMode !== "full") {
+          return "Error: team_mode must be either 'mini' or 'full'.";
         }
 
         const cfgDir = path.join(context.worktree, ".codenomad");

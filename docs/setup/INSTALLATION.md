@@ -33,7 +33,7 @@ PMA is the default orchestrator and will help you set up the repository for Noma
 
 During setup, PMA should ask whether you want:
 
-- `reduced` team mode for simple repositories and `tiny` / `standard` work
+- `mini` team mode for simple repositories and `tiny` / `standard` work
 - `full` team mode for the complete collective, including `complex` workflows
 
 You do not need to manually run NomadWorks initialization commands as a first step.

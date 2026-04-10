@@ -102,10 +102,11 @@ flowchart TD
     P --> S[Stage 7: Verification and evidence<br/>Developer or specialist + QA or Tech Lead]
     Q --> S
     R --> S
-    S --> L3[Stage 7B: Runner notifies PMA on completion]
+    S -->|tiny or standard| T{Gate 4:<br/>All ACs covered with evidence?}
+    S -->|complex| L3[Stage 7B: Runner notifies PMA on completion]
     L2 --> L3
+    L3 --> T
 
-    S --> T{Gate 4:<br/>All ACs covered with evidence?}
     T -->|No| U[Return for fixes or clarification]
     U --> M
     T -->|Yes| V[Stage 8: Documentation closure<br/>Relevant agents update product and technical docs<br/>PMA verifies closure]

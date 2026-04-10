@@ -1,6 +1,8 @@
 # NomadWorks
 
-NomadWorks is an OpenCode plugin that installs a structured multi-agent workflow into a repository.
+NomadWorks is an OpenCode plugin that installs the **NomadWorks Collective**: an AI-native software development team composed of specialized agents with distinct roles, handoff rules, and verification gates.
+
+Instead of giving you a single generic assistant flow, NomadWorks gives you a small software company inside OpenCode. The collective includes product, architecture, development, QA, review, and design roles that collaborate through explicit artifacts such as SCRs, task files, evidence packets, and documentation updates.
 
 ## Install
 
@@ -29,6 +31,8 @@ Quick links:
 
 ## Workflow Agents
 
+The NomadWorks Collective operates like a role-based software development team:
+
 - `product_manager` (Product Manager Agent, PMA): Default orchestrator and routing agent.
 - `workflow_runner` (Workflow Runner): Autonomous executor for complex implementation tasks.
 - `business_analyst` (Business Analyst, BA): Requirements and product-truth steward.
@@ -38,6 +42,8 @@ Quick links:
 - `qa_engineer` (QA Engineer): Verification and test coverage.
 - `reviewer` (Reviewer): Independent review.
 - `ui_ux_designer` (UI/UX Designer): Visual and interaction review.
+
+Together, these agents act as a coordinated delivery team rather than a loose set of tools. PMA manages the work, specialists own their disciplines, and the workflow enforces that major changes are specified, verified, and documented before closure.
 
 ## Task Model
 

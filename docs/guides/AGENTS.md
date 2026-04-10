@@ -1,6 +1,8 @@
 # Workflow Agents
 
-NomadWorks installs a role-based agent set into OpenCode.
+NomadWorks installs the **NomadWorks Collective** into OpenCode: a role-based AI software development team that behaves more like a delivery organization than a single assistant.
+
+The collective is designed so each agent represents a professional function inside an AI-native software company. Instead of one model improvising across all concerns, NomadWorks distributes responsibility across product, architecture, implementation, QA, review, and design roles.
 
 ## Primary orchestration agents
 

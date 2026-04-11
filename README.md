@@ -36,6 +36,7 @@ Quick links:
 - [Configuration](docs/setup/CONFIGURATION.md)
 - [Workflow Agents](docs/guides/AGENTS.md)
 - [Workflow Model](docs/guides/WORKFLOW.md)
+- [Plugin Tools](docs/guides/TOOLS.md)
 - [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md)
 - [Full Team Mode](docs/guides/TEAM_MODE_FULL.md)
 - [Documentation Structure](docs/core/documentation_structure.md)
@@ -61,6 +62,19 @@ The NomadWorks Collective operates like a role-based software development team:
 - `ui_ux_designer` (UI/UX Designer): Visual and interaction review.
 
 Together, these agents act as a coordinated delivery team rather than a loose set of tools. PMA manages the work, specialists own their disciplines, and the workflow enforces that major changes are specified, verified, and documented before closure.
+
+## Plugin Tools
+
+NomadWorks provides these plugin tools:
+
+- `nomadworks_init`
+- `nomadworks_validate`
+- `nomadworks_start_discussion`
+- `nomadworks_stop_discussion`
+- `nomadflow_run_workflow`
+- `nomadflow_prompt_workflow`
+
+For arguments, behavior, and team-mode availability, see [Plugin Tools](docs/guides/TOOLS.md).
 
 ## Task Model
 

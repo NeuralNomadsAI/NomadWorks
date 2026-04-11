@@ -12,6 +12,7 @@ const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 const MANDATORY_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 const MINI_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
+const DISCUSSION_BACKFILL_FETCH_LIMIT = 100;
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
@@ -108,6 +109,152 @@ function hasActiveImplementationWorkflow() {
   return false;
 }
 
+function slugifyTitle(input) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "discussion";
+}
+
+function discussionRegistryPath(worktree) {
+  return path.join(worktree, ".codenomad", "runtime", "discussions.json");
+}
+
+function loadDiscussionRegistry(worktree) {
+  const registryPath = discussionRegistryPath(worktree);
+  if (!fs.existsSync(registryPath)) {
+    return { version: 1, active: {} };
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(registryPath, "utf8"));
+    return {
+      version: 1,
+      active: parsed.active || {}
+    };
+  } catch {
+    return { version: 1, active: {} };
+  }
+}
+
+function saveDiscussionRegistry(worktree, registry) {
+  const registryPath = discussionRegistryPath(worktree);
+  const runtimeDir = path.dirname(registryPath);
+  if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
+  fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), "utf8");
+}
+
+function nextDiscussionIdentity(worktree, title) {
+  const discussionsDir = path.join(worktree, "tasks", "discussions");
+  if (!fs.existsSync(discussionsDir)) fs.mkdirSync(discussionsDir, { recursive: true });
+
+  let sequence = 1;
+  while (true) {
+    const id = `DISCUSSION-${String(sequence).padStart(3, "0")}`;
+    const filename = `${id}-${slugifyTitle(title)}.md`;
+    const relativePath = path.join("tasks", "discussions", filename);
+    const absolutePath = path.join(worktree, relativePath);
+    if (!fs.existsSync(absolutePath)) {
+      return { id, filename, relativePath, absolutePath };
+    }
+    sequence += 1;
+  }
+}
+
+function findDiscussionById(worktree, discussionID) {
+  const discussionsDir = path.join(worktree, "tasks", "discussions");
+  if (!fs.existsSync(discussionsDir)) return null;
+
+  const entries = fs.readdirSync(discussionsDir).filter(name => name.startsWith(`${discussionID}-`) && name.endsWith(".md"));
+  if (entries.length === 0) return null;
+
+  const filename = entries.sort()[0];
+  return {
+    filename,
+    relativePath: path.join("tasks", "discussions", filename),
+    absolutePath: path.join(discussionsDir, filename)
+  };
+}
+
+function parseDiscussionFile(filePath) {
+  const raw = fs.readFileSync(filePath, "utf8");
+  const { data, body } = parseFrontmatter(raw);
+  return { data, body: body.trimStart() };
+}
+
+function writeDiscussionFile(filePath, frontmatter, body) {
+  const serialized = `---\n${YAML.stringify(frontmatter).trim()}\n---\n\n${body.trimEnd()}\n`;
+  fs.writeFileSync(filePath, serialized, "utf8");
+}
+
+function setDiscussionStatus(filePath, status) {
+  if (!fs.existsSync(filePath)) return;
+  const { data, body } = parseDiscussionFile(filePath);
+  writeDiscussionFile(filePath, { ...data, status }, body);
+}
+
+function appendDiscussionMessage(filePath, speaker, text, messageID = null) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  const { data, body } = parseDiscussionFile(filePath);
+  const entry = `**${speaker}**\n${trimmed}`;
+  const nextBody = body.trim() ? `${body.trimEnd()}\n\n${entry}` : entry;
+  const nextFrontmatter = { ...data };
+  if (messageID) {
+    const prior = Array.isArray(nextFrontmatter.appended_message_ids) ? nextFrontmatter.appended_message_ids : [];
+    if (!prior.includes(messageID)) {
+      nextFrontmatter.appended_message_ids = [...prior, messageID];
+    }
+  }
+  writeDiscussionFile(filePath, nextFrontmatter, nextBody);
+}
+
+function extractTextParts(parts) {
+  return parts
+    .filter(part => part.type === "text" && !part.ignored && !part.synthetic && typeof part.text === "string")
+    .map(part => part.text.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function fetchSessionMessages(client, sessionID, limit) {
+  const response = await client.session.messages({
+    path: { id: sessionID },
+    query: { limit }
+  });
+  return response.data || [];
+}
+
+function isBackfillableConversationMessage(message) {
+  if (!message?.info) return false;
+  if (message.info.role !== "user" && message.info.role !== "assistant") return false;
+  const text = extractTextParts(message.parts || []);
+  return Boolean(text);
+}
+
+function selectLastConversationMessages(messages, count) {
+  if (count <= 0) return [];
+  const eligible = messages.filter(isBackfillableConversationMessage);
+  return eligible.slice(-count);
+}
+
+async function appendMessageIfNeeded(client, worktree, registry, sessionID, messageID, speaker) {
+  const discussion = registry.active[sessionID];
+  if (!discussion) return;
+  if (discussion.appendedMessageIDs?.includes(messageID)) return;
+
+  const response = await client.session.message({
+    path: { id: sessionID, messageID }
+  });
+  const text = extractTextParts(response.data.parts || []);
+  if (!text) return;
+
+  appendDiscussionMessage(path.join(worktree, discussion.filePath), speaker, text, messageID);
+  discussion.appendedMessageIDs ??= [];
+  discussion.appendedMessageIDs.push(messageID);
+  saveDiscussionRegistry(worktree, registry);
+}
+
 function normalizeTeamMode(value) {
   if (typeof value !== "string") return "full";
   const normalized = value.trim().toLowerCase();
@@ -178,6 +325,7 @@ export default async function NomadWorksPlugin(input) {
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = path.join(worktree, ".nomadworks", "agents");
   const configPath = path.join(worktree, ".codenomad", "nomadworks.yaml");
+  const discussionRegistry = loadDiscussionRegistry(worktree);
 
   // Load project-specific configuration
   let repoCfg = { agents: {}, defaults: {}, features: {} };
@@ -338,6 +486,150 @@ export default async function NomadWorksPlugin(input) {
         }
       }
     }),
+    nomadworks_start_discussion: tool({
+      description: "Start an automatic discussion transcript for this session",
+      args: {
+        title: tool.schema.string().describe("Discussion title for a new discussion"),
+        existing_discussion_id: tool.schema.string().describe("Existing discussion ID to reopen"),
+        previous_message_count: tool.schema.number().describe("Number of earlier user and assistant messages from this session to include in the discussion before live capture starts")
+      },
+      async execute(args, context) {
+        const sessionID = context.sessionId || context.sessionID;
+        if (!sessionID) return "Error: Session ID not found in context.";
+
+        const existing = discussionRegistry.active[sessionID];
+        if (existing) {
+          return `FAIL: An active discussion already exists for this session.\nID: ${existing.id}\nTitle: ${existing.title}\nFile: ${existing.filePath}\nStatus: ${existing.status}`;
+        }
+
+        const title = typeof args.title === "string" ? args.title.trim() : "";
+        const existingDiscussionID = typeof args.existing_discussion_id === "string" ? args.existing_discussion_id.trim() : "";
+
+        if ((title && existingDiscussionID) || (!title && !existingDiscussionID)) {
+          return "Error: Provide exactly one of 'title' or 'existing_discussion_id'.";
+        }
+
+        const previousMessageCount = Number.isInteger(args.previous_message_count)
+          ? args.previous_message_count
+          : Number(args.previous_message_count);
+        if (!Number.isFinite(previousMessageCount) || previousMessageCount < 0) {
+          return "Error: previous_message_count must be a non-negative number.";
+        }
+
+        const agent = context.agent || "assistant";
+        let identity;
+        let discussionTitle;
+        let entry;
+
+        if (existingDiscussionID) {
+          identity = findDiscussionById(context.worktree, existingDiscussionID);
+          if (!identity) {
+            return `Error: Discussion '${existingDiscussionID}' was not found.`;
+          }
+
+          for (const [activeSessionID, activeDiscussion] of Object.entries(discussionRegistry.active)) {
+            if (activeDiscussion.id === existingDiscussionID) {
+              return `FAIL: Discussion '${existingDiscussionID}' is already active in session '${activeSessionID}'.\nFile: ${activeDiscussion.filePath}\nStatus: ${activeDiscussion.status}`;
+            }
+          }
+
+          const existingFile = parseDiscussionFile(identity.absolutePath);
+          discussionTitle = existingFile.data.title || existingDiscussionID;
+          writeDiscussionFile(identity.absolutePath, {
+            ...existingFile.data,
+            status: "active",
+            agent,
+            session_id: sessionID
+          }, existingFile.body);
+
+          entry = {
+            id: existingDiscussionID,
+            title: discussionTitle,
+            filePath: identity.relativePath,
+            status: "active",
+            agent,
+            appendedMessageIDs: Array.isArray(existingFile.data.appended_message_ids) ? [...existingFile.data.appended_message_ids] : []
+          };
+        } else {
+          discussionTitle = title;
+          identity = nextDiscussionIdentity(context.worktree, discussionTitle);
+          const frontmatter = {
+            id: identity.id,
+            title: discussionTitle,
+            status: "active",
+            agent,
+            session_id: sessionID,
+            appended_message_ids: []
+          };
+          writeDiscussionFile(identity.absolutePath, frontmatter, `# Discussion: ${discussionTitle}\n\n## Messages`);
+
+          entry = {
+            id: identity.id,
+            title: discussionTitle,
+            filePath: identity.relativePath,
+            status: "active",
+            agent,
+            appendedMessageIDs: []
+          };
+        }
+
+        discussionRegistry.active[sessionID] = entry;
+        saveDiscussionRegistry(context.worktree, discussionRegistry);
+
+        let backfilled = 0;
+        if (previousMessageCount > 0) {
+          try {
+            const messages = await fetchSessionMessages(input.client, sessionID, DISCUSSION_BACKFILL_FETCH_LIMIT);
+            const ordered = [...messages].sort((a, b) => a.info.time.created - b.info.time.created);
+            const selected = selectLastConversationMessages(ordered, previousMessageCount);
+
+            for (const message of selected) {
+              if (message.info.role === "user") {
+                const text = extractTextParts(message.parts || []);
+                if (text) {
+                  appendDiscussionMessage(identity.absolutePath, "User", text, message.info.id);
+                  if (!entry.appendedMessageIDs.includes(message.info.id)) entry.appendedMessageIDs.push(message.info.id);
+                  backfilled += 1;
+                }
+              } else if (message.info.role === "assistant") {
+                const text = extractTextParts(message.parts || []);
+                if (text) {
+                  appendDiscussionMessage(identity.absolutePath, agent, text, message.info.id);
+                  if (!entry.appendedMessageIDs.includes(message.info.id)) entry.appendedMessageIDs.push(message.info.id);
+                  backfilled += 1;
+                }
+              }
+            }
+            saveDiscussionRegistry(context.worktree, discussionRegistry);
+          } catch {
+            // Discussion stays active even if backfill fails.
+          }
+        }
+
+        const action = existingDiscussionID ? "reopened" : "started";
+        return `SUCCESS: Discussion ${action}.\nID: ${entry.id}\nTitle: ${discussionTitle}\nFile: ${identity.relativePath}\nStatus: active\nBackfilled messages: ${backfilled}`;
+      }
+    }),
+    nomadworks_stop_discussion: tool({
+      description: "Stop the automatic discussion transcript for this session",
+      args: {},
+      async execute(args, context) {
+        const sessionID = context.sessionId || context.sessionID;
+        if (!sessionID) return "Error: Session ID not found in context.";
+
+        const existing = discussionRegistry.active[sessionID];
+        if (!existing) {
+          return "FAIL: No active discussion exists for this session.";
+        }
+
+        const discussionPath = path.join(context.worktree, existing.filePath);
+        setDiscussionStatus(discussionPath, "closing");
+        existing.status = "closing";
+        saveDiscussionRegistry(context.worktree, discussionRegistry);
+
+        return `SUCCESS: Discussion stop requested.\nID: ${existing.id}\nTitle: ${existing.title}\nFile: ${existing.filePath}\nStatus: closing`;
+      }
+    }),
      nomadflow_run_workflow: tool({
       description: "Start a workflow_runner session for a complex task",
       args: {
@@ -469,6 +761,29 @@ export default async function NomadWorksPlugin(input) {
           } catch (err) {
             console.error(`[NomadFlow] Failed to notify PMA session:`, err);
           }
+        }
+      }
+
+      if (event.type === "message.updated") {
+        const info = event.properties?.info;
+        if (!info?.sessionID || !discussionRegistry.active[info.sessionID]) return;
+
+        try {
+          if (info.role === "user") {
+            await appendMessageIfNeeded(client, worktree, discussionRegistry, info.sessionID, info.id, "User");
+          }
+
+          if (info.role === "assistant" && info.time?.completed) {
+            const discussion = discussionRegistry.active[info.sessionID];
+            await appendMessageIfNeeded(client, worktree, discussionRegistry, info.sessionID, info.id, discussion.agent || "Assistant");
+            if (discussion?.status === "closing") {
+              setDiscussionStatus(path.join(worktree, discussion.filePath), "closed");
+              delete discussionRegistry.active[info.sessionID];
+              saveDiscussionRegistry(worktree, discussionRegistry);
+            }
+          }
+        } catch (err) {
+          if (debug) console.error("[NomadWorks] Failed to append discussion transcript:", err);
         }
       }
     },

@@ -4,6 +4,8 @@ mode: primary
 tools:
   nomadworks_init: true
   nomadworks_validate: true
+  nomadworks_start_discussion: true
+  nomadworks_stop_discussion: true
   nomadflow_run_workflow: true
   nomadflow_prompt_workflow: true
 ---

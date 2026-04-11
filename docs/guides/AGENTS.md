@@ -18,6 +18,14 @@ The collective is designed so each agent represents a professional function insi
 - `qa_engineer`: Designs and executes verification and test coverage.
 - `ui_ux_designer`: Reviews visual and interaction quality for UI-facing work.
 
+## Discussion-Capable Agents
+
+These agents can talk directly with the user and turn meaningful discussions into tracked handoff tasks:
+
+- `product_manager`
+- `business_analyst`
+- `tech_lead`
+
 ## Typical usage by task complexity
 
 ### Tiny

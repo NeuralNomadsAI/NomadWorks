@@ -75,6 +75,8 @@ That document defines:
 *   **The 3-Attempt Rule:** If a Developer fails to resolve an issue after three attempts, it is escalated to the Technical Architect.
 *   **Task Lifecycle:** PMA reviews -> Updates task file -> Assigns next agent.
 *   **Discussion Tasks:** When a discussion between PMA, BA, and Tech Lead becomes workflow-relevant, it should be captured in a normal task file, assigned to the next responsible agent, and tracked under `Active Discussions` in `tasks/current.md` until it resolves into execution, SCR work, clarification, or closure.
+*   **Task Reopening:** If a task that was thought to be complete later needs unresolved discrepancies fixed or minor same-scope changes after implementation, reuse the same task file, move it back into `Active`, and record the reason in the task's `Reopen History` rather than creating a brand new task.
+*   **Resume Continuity:** When resuming a reopened task, keep the same task file ID. Reuse the same Task tool `task_id` for delegated task work when possible, and for workflow-runner execution reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible, so prior context remains available.
 *   **Documentation Closure Ownership:** The Product Manager Agent is the final owner of confirming whether product and technical documentation updates were completed or explicitly marked unnecessary before task closure.
 *   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
 *   **Evidence Collection:** Every task must produce an **Evidence Packet** in `evidences/[feature_task_name]/`. This MUST include:

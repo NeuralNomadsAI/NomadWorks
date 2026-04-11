@@ -71,6 +71,14 @@ When PMA, BA, or Tech Lead need to hand workflow-relevant discussion context to 
 
 Track these task files under `Active Discussions` in `tasks/current.md` until they resolve into execution, SCR work, clarification, or closure.
 
+## Reopen And Resume
+
+- If a task was thought to be done but later needs discrepancies fixed or minor same-scope changes, reopen the same task instead of creating a new one.
+- Move it back into `Active` in `tasks/current.md`.
+- Keep the same task file ID and record the reason in `Reopen History`.
+- Reuse the same Task tool `task_id` for delegated task work when possible.
+- If the task used `workflow_runner`, reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible.
+
 SCR files use similarly lightweight frontmatter:
 
 ```yaml

@@ -43,6 +43,13 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and an **A
         5. **Commit & Archive:** Finalize code and registries.
     *   **Next Task:** Proceed to the next Micro-Task only after the previous one is in `tasks/done/`.
 
+### 3.2 Reopen And Resume
+- If a task that was believed to be done later needs discrepancies fixed or minor same-scope changes, PMA should move that same task back into `Active` instead of creating a brand new task.
+- The task keeps the same task file ID and records the discrepancy in `Reopen History`.
+- When PMA resumes delegated task work, it should reuse the same Task tool `task_id` when possible.
+- If the task previously ran through `workflow_runner`, PMA should reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible so the prior context is preserved.
+- Create a new task only when the new work is truly follow-up scope rather than unfinished original scope.
+
 ### 3.1 Limited Parallelism (Shared Worktree)
 - One shared-worktree `implementation` task may be active at a time.
 - `investigation` and `spec` tasks may run in parallel with that implementation task when they do not edit the same delivery artifacts.

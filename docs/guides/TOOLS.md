@@ -44,14 +44,16 @@ Provide exactly one of:
 
 Also provide:
 
-- `previous_message_count`: number of earlier **user and assistant** messages from the current session to include before live capture starts
+- `previous_message_count`: number of earlier **user and assistant** messages from the current session to include before live capture starts or before a discussion is reopened
 
 ### Notes
 
 - Use `0` if the discussion starts now.
+- Use `existing_discussion_id` plus `previous_message_count` to reopen an older discussion and include a small amount of newer conversation that happened before the reopen call.
 - Only one active discussion is allowed per session.
 - Discussion transcripts are stored in `tasks/discussions/`.
 - Active discussion state is persisted in `.codenomad/runtime/discussions.json`.
+- Only discussion-capable agents should use these discussion tools.
 
 ## `nomadworks_stop_discussion`
 

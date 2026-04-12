@@ -79,6 +79,7 @@ That document defines:
 *   **Resume Continuity:** When resuming a reopened task, keep the same task file ID. Reuse the same Task tool `task_id` for delegated task work when possible, and for workflow-runner execution reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible, so prior context remains available.
 *   **Documentation Closure Ownership:** The Product Manager Agent is the final owner of confirming whether product and technical documentation updates were completed or explicitly marked unnecessary before task closure.
 *   **Git Strategy:** PMA/Technical Leads manage commits after user approval.
+*   **Commit Message Policy:** Every commit message must use a concise subject line in the format `<type>: <optional-task-id> <short summary>` and must include a brief body explaining exactly what the commit is for. If the commit is associated with a task, include the task ID in the subject.
 *   **Evidence Collection:** Every task must produce an **Evidence Packet** in `evidences/[feature_task_name]/`. This MUST include:
     *   `SUMMARY.md`: A brief explanation of what was tested and what the attached files prove.
     *   `logs/`: Terminal output from verification commands.

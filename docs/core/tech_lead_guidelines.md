@@ -14,3 +14,4 @@ This document defines the leadership and verification responsibilities for the T
 - **Code Review:** Perform a thorough review of the diff and test coverage.
 - **Documentation Verification:** Ensure all technical and feature documentation has been updated to reflect the changes before committing code.
 - **Commit Management:** The Tech Lead is responsible for the final Git commit to the target branch after User approval.
+- **Commit Message Format:** Use a concise subject line in the format `<type>: <optional-task-id> <short summary>` and always include a brief body that explains what the commit is for.

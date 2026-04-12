@@ -1,5 +1,7 @@
 # NomadWorks
 
+> Don't just code with AI. Build enterprise-grade software.
+
 NomadWorks is an OpenCode plugin that installs the **NomadWorks Collective**: an AI-native software development team composed of specialized agents with distinct roles, handoff rules, and verification gates.
 
 Instead of giving you a single generic assistant flow, NomadWorks gives you a small software company inside OpenCode. The collective includes product, architecture, development, QA, review, and design roles that collaborate through explicit artifacts such as SCRs, task files, evidence packets, and documentation updates.

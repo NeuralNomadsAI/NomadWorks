@@ -55,7 +55,7 @@ Quick links:
 The NomadWorks Collective operates like a role-based software development team:
 
 - `product_manager` (Product Manager Agent, PMA): Default orchestrator and routing agent.
-- `workflow_runner` (Workflow Runner): Autonomous executor for complex implementation tasks.
+- `workflow_runner` (Workflow Runner): Delegated executor for complex implementation tasks.
 - `business_analyst` (Business Analyst, BA): Requirements and product-truth steward.
 - `technical_architect` (Technical Architect): Architecture, interfaces, and impact mapping.
 - `tech_lead` (Tech Lead): Behavioral verification and technical sign-off.

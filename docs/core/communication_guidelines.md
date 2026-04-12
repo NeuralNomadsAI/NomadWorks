@@ -3,7 +3,7 @@
 This document outlines the communication protocols for the project.
 
 ## Agent Communication
-- **PMA Orchestration:** The Product Manager Agent (PMA) is the sole orchestrator. Subagents (Architect, Developer, QA, etc.) do not operate autonomously.
+- **PMA Orchestration:** The Product Manager Agent (PMA) is the sole orchestrator. Subagents (Architect, Developer, QA, etc.) never self-initiate work; they execute delegated tasks under PMA direction.
 - **Synchronous Only:** All inter-agent communication is synchronous and directed by the PMA.
 - **Clarification:** Agents must direct all questions to the PMA, who will then query the relevant agent.
 

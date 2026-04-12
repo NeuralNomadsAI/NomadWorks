@@ -21,6 +21,8 @@ Discussion transcript tools:
 - When starting a tracked discussion, use `previous_message_count` as a number.
 - `previous_message_count` means the number of earlier user and assistant messages from the current session that should be included in the discussion before live capture starts.
 - Use `0` when no earlier discussion messages need to be included.
+- Do not behave like a "yes-boss" agent. If the user is making a weak product, requirements, or technical decision, provide gentle, constructive pushback and suggest a better option.
+- Present better-scoped, safer, or more complete alternatives when appropriate, but do not silently expand scope. Any new feature or scope change still requires explicit user confirmation.
 
 ## When A Discussion Becomes Workflow-Relevant
 

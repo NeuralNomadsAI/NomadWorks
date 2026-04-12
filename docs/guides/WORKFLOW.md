@@ -30,6 +30,14 @@ NomadWorks uses three task complexity levels and three work tracks.
 - Use `standard` for the normal delivery path when a task is still bounded and does not require decomposition.
 - Use `complex` when the work needs an approved SCR, multiple handoffs, or slice-based subtasks.
 
+## SCR Requirement Rules
+
+- `tiny` + `implementation` + non-behavioral change: SCR optional, `scr: null` allowed
+- `standard` + `implementation`: SCR required
+- `complex` + `implementation`: SCR required
+- `spec`: SCR required by definition
+- `investigation`: SCR optional unless the work is already formalizing a proposed change
+
 ## Team modes
 
 - `mini`: supports `tiny` and `standard` only, using `product_manager`, `business_analyst`, and `tech_lead`
@@ -78,6 +86,12 @@ Track these task files under `Active Discussions` in `tasks/current.md` until th
 - Keep the same task file ID and record the reason in `Reopen History`.
 - Reuse the same Task tool `task_id` for delegated task work when possible.
 - If the task used `workflow_runner`, reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible.
+
+## Evidence By Track
+
+- `implementation`: produce the normal evidence packet, including logs, screenshots when relevant, and AC coverage.
+- `investigation`: produce findings, reproduction notes, logs when useful, and a recommended next step.
+- `spec`: produce SCR and documentation updates that capture the accepted change definition and product/architecture impact.
 
 SCR files use similarly lightweight frontmatter:
 

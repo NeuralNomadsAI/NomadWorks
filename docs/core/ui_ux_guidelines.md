@@ -14,6 +14,12 @@ This document defines the principles and workflow for the UI/UX Designer agent.
 - **Judgment:** Use the "Visual Quality Checklist" below to determine if the result is 'Good', 'Needs Fix Now', or 'Future Enhancement'.
 - **No Code Review:** The UI/UX designer focuses purely on the visual and interactive outcome, not the implementation details.
 
+## Execution Notes
+
+- Review screenshots and other visual evidence directly from the task's evidence packet.
+- Do not assume a dedicated image-analysis tool exists unless the runtime explicitly provides one.
+- If the provided evidence is insufficient for visual review, report that clearly and ask for better screenshots rather than guessing.
+
 ## Visual Quality Checklist (The "Award-Winning" Standard)
 When reviewing implemented features, judge the screenshots against these specific criteria:
 

@@ -7,7 +7,7 @@ The collective is designed so each agent represents a professional function insi
 ## Primary orchestration agents
 
 - `product_manager`: The default primary agent. Routes work by complexity, delegates specialists, and decides when to use the Workflow Runner.
-- `workflow_runner`: Autonomous executor for complex implementation tasks. Owns pre-task sync, implementation orchestration, post-task sync, and final reporting.
+- `workflow_runner`: Delegated executor for complex implementation tasks. Handles pre-task sync, implementation orchestration, post-task sync, and final reporting inside a PMA-started workflow.
 
 ## Specialist agents
 
@@ -25,6 +25,14 @@ These agents can talk directly with the user and turn meaningful discussions int
 - `product_manager`
 - `business_analyst`
 - `tech_lead`
+
+## Agent Mode Semantics
+
+- `primary`: The default main agent the user lands in for the repository.
+- `subagent`: Intended for delegated specialist work rather than direct primary use.
+- `all`: Can be used either as a directly selected agent or as a delegated specialist, depending on the workflow.
+
+`mode: all` does not make an agent an orchestrator by default. PMA remains the sole workflow orchestrator. Discussion-capable agents may speak directly with the user, but workflow-relevant work must still be handed back through task files and PMA-owned orchestration.
 
 ## Typical usage by task complexity
 

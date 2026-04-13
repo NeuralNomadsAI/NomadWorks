@@ -7,13 +7,22 @@ NomadWorks publishes to npm as `@neuralnomads/nomadworks`.
 - Versioning, build verification, and npm publishing are handled by the GitHub Actions workflow `Release npm package`.
 - Pushes to `dev` automatically publish npm prereleases.
 - Pushes to `main` automatically publish stable npm releases.
+- GitHub Actions publishes through npm Trusted Publishing with provenance enabled.
 - The workflow does not commit or tag version changes back to the repository. It derives the publish version from `package.json` and npm's already-published versions.
 
-## Required Repository Secret
+## Trusted Publishing Setup
 
-Add this repository secret before publishing:
+Configure npm Trusted Publishing for this GitHub repository before relying on CI publishes.
 
-- `NPM_TOKEN`: npm access token with permission to publish `@neuralnomads/nomadworks`
+At a minimum, npm must trust this repository's GitHub Actions workflow as a publisher for `@neuralnomads/nomadworks`.
+
+Expected setup:
+
+1. Open the npm package settings for `@neuralnomads/nomadworks`.
+2. Configure a Trusted Publisher for this GitHub repository.
+3. Allow GitHub Actions from this repository to publish the package.
+
+No `NPM_TOKEN` repository secret is required once Trusted Publishing is configured correctly.
 
 ## Workflow Behavior
 
@@ -24,7 +33,7 @@ The release workflow performs these steps:
 3. Runs `npm run release:check`, which executes tests, builds `dist/`, and previews the publish tarball.
 4. Resolves the publish version based on the current branch and npm registry history.
 5. Applies that version locally with `npm version --no-git-tag-version`.
-6. Publishes the package with `npm publish --provenance`.
+6. Publishes the package with `npm publish --provenance` using npm Trusted Publishing.
 
 ## Branch Behavior
 
@@ -79,4 +88,5 @@ This command:
 - `prepack` runs `npm run build`, so local `npm pack` and `npm publish` always include a fresh `dist/` build.
 - `publishConfig.access` is set to `public` so the scoped package can publish correctly on npm.
 - The prerelease counter is remembered via npm registry history, not via git tags or committed prerelease versions.
+- CI publishing depends on npm Trusted Publishing plus the workflow permission `id-token: write`.
 - If you need to dry-run a release locally without publishing, use `npm run release:check` and inspect the tarball preview output.

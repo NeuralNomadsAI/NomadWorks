@@ -56,8 +56,6 @@ jobs:
       - name: Publish package to npm
         if: steps.resolve.outputs.should_publish == 'true'
         run: npm publish --provenance --tag "${{ steps.resolve.outputs.publish_tag }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Release summary
         run: |

@@ -36,12 +36,23 @@ Quick links:
 
 - [Installation](docs/setup/INSTALLATION.md)
 - [Configuration](docs/setup/CONFIGURATION.md)
+- [Releasing](docs/setup/RELEASING.md)
 - [Workflow Agents](docs/guides/AGENTS.md)
 - [Workflow Model](docs/guides/WORKFLOW.md)
 - [Plugin Tools](docs/guides/TOOLS.md)
 - [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md)
 - [Full Team Mode](docs/guides/TEAM_MODE_FULL.md)
 - [Documentation Structure](docs/core/documentation_structure.md)
+
+## Release
+
+NomadWorks ships as the npm package `@neuralnomads/nomadworks`.
+
+- Local verification: `npm run release:check`
+- Push to `dev`: auto-publish prerelease (`rc`)
+- Push to `main`: auto-publish stable release
+
+For the full release setup, required secrets, and branch-based versioning behavior, see [Releasing](docs/setup/RELEASING.md).
 
 ## Team Modes
 

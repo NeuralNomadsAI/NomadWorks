@@ -29,6 +29,7 @@ Critical npm-side details:
 - Workflow filename: `release.yml`
 - If you use an optional environment in npm's Trusted Publisher settings, it must exactly match the GitHub Actions environment name used by the workflow.
 - `package.json` must include a `repository.url` that exactly matches `https://github.com/NeuralNomadsAI/NomadWorks`.
+- GitHub Actions must run on a supported Node.js version for npm Trusted Publishing. This workflow uses Node.js `24`.
 
 No `NPM_TOKEN` repository secret is required once Trusted Publishing is configured correctly.
 

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NeuralNomadsAI/NomadWorks.git"
+    "url": "https://github.com/NeuralNomadsAI/NomadWorks"
   },
   "type": "module",
   "main": "dist/index.js",

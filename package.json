@@ -1,6 +1,10 @@
 {
   "name": "@neuralnomads/nomadworks",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeuralNomadsAI/NomadWorks.git"
+  },
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

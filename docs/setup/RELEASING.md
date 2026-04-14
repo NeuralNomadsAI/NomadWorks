@@ -22,6 +22,14 @@ Expected setup:
 2. Configure a Trusted Publisher for this GitHub repository.
 3. Allow GitHub Actions from this repository to publish the package.
 
+Critical npm-side details:
+
+- GitHub organization or user: `NeuralNomadsAI`
+- Repository: `NomadWorks`
+- Workflow filename: `release.yml`
+- If you use an optional environment in npm's Trusted Publisher settings, it must exactly match the GitHub Actions environment name used by the workflow.
+- `package.json` must include a `repository.url` that exactly matches `https://github.com/NeuralNomadsAI/NomadWorks`.
+
 No `NPM_TOKEN` repository secret is required once Trusted Publishing is configured correctly.
 
 ## Workflow Behavior

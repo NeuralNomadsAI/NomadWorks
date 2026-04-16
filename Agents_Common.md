@@ -54,19 +54,19 @@ That document defines:
 ## 5. Operational Guidelines
 
 *   **Documentation Reading:** Whenever reading any file under `docs/` or `tasks/`, the file MUST be read fully to ensure complete understanding of the context and requirements. 
-*   **Role-Specific Guidelines:** Every agent is responsible for reading their specific guideline file from `docs/core/` at the start of their session (e.g., `developer_guidelines.md`, `qa_guidelines.md`).
+*   **Role-Specific Guidelines:** Every agent is responsible for reading the core guidance and any applicable repository policy includes that are part of their prompt.
 *   **Signed Agent Messages:** Agent-to-agent interactions must begin with a signed first message that clearly identifies the sending and receiving agents. Use this exact format on the first line: `[Agent Message] From: <agent_name> To: <agent_name>`. Example: `[Agent Message] From: product_manager To: tech_lead`. If a message does not begin with an agent signature, agents should assume they are speaking directly with the user.
 *   **Pre-task Clarification:** Before starting any task, thoroughly review requirements. If anything is missing, ambiguous, or insufficient, immediately stop and clearly state what is needed, requesting clarification from the manager agent. Do not proceed until all requirements are clear.
 *   **CodeMap-First Navigation:** Before broad repository search, agents should consult the most relevant `codemap.yml` chain for the area they are trying to understand. Use local, parent, root, or explicitly targeted module CodeMaps as the first navigation pass. If no suitable CodeMap exists or it is insufficient, agents may then expand into direct search and source inspection.
 *   **Sync-up Mode Evaluation:** When in Sync-up Mode, critically evaluate the provided task definition for completeness and clarity. Identify missing information and explain its cruciality.
 *   **Development Considerations:** Always keep in mind Security, Scalability, Maintainability, Error Handling, Performance, and Consistency.
 *   **Concise Communication:** Agent responses should be brief, direct, and non-repetitive. Do not restate the same point multiple times, and do not become overly verbose unless the user explicitly asks for more detail.
-*   **.gitignore Updates:** Whenever project setups are completed (e.g., adding new dependencies, features, or environments), ensure the `.gitignore` file is updated to exclude sensitive, temporary, or unnecessary files from version control.
+*   **.gitignore Updates:** Whenever repository changes introduce generated, temporary, or sensitive files, ensure ignore rules are updated appropriately.
 *   **Task Success Criteria:** No task is considered successful if there are failed tests, failed builds, or any other reason that prevents successful deployment. Any such issues must be fixed, even if the cause is not directly related to the current changes.
 *   **Acceptance Criteria Traceability:** Every task must define numbered acceptance criteria (`AC-1`, `AC-2`, ...) and the final evidence must trace verification back to those criteria.
 *   **Subagent Delegation:** No subagent simulation; we will be using actual subagents via the Task tool for every task delegation. When a task is assigned to a subagent, a task file MUST be provided, and the subagent MUST be instructed to read this file for detailed instructions. If a task is assigned without a task file, the subagent MUST strictly refuse to perform the task.
 *   **Economical Task Planning:** All agents should plan their tasks to be economical and smart to reduce requests usage. One such trick could be to use batched requests when appropriate.
-*   **External Dependency Management:** When setting up or integrating external dependencies, always use the latest stable version. If a dependency provides a utility or script for setup/initialization (e.g., `npm install`, `init` scripts), prefer using that utility to ensure correct configuration.
+*   **External Dependency Management:** Follow the repository's development policy when selecting, updating, or initializing external dependencies.
 *   **Post-Implementation Task Updates:** After completing their implementation step, each subagent MUST update the task file with a section titled `# Post Implementation Task Updates`, followed by a `## <Agent Name>: Post Implementation Expectations` heading. Under this heading, they should provide a bulleted list of observable outcomes or expected changes.
 *   **Discrepancy Resolution Policy:** Any discrepancy found during a task, regardless of its perceived impact or direct relevance to the current task, MUST be explicitly noted, documented, and rectified. No discrepancies, minor or otherwise, shall be overlooked or excluded from the resolution process.
 *   **100% Automated Test Pass Rate Policy:** All automated tests MUST pass successfully with a 100% pass rate. No 'expected skips' or failures are acceptable. Any test that currently skips or fails must either be fixed to pass or removed (with documented reasoning).
@@ -81,27 +81,19 @@ That document defines:
 *   **Documentation Closure Ownership:** The Product Manager Agent is the final owner of confirming whether product and technical documentation updates were completed or explicitly marked unnecessary before task closure.
 *   **Git Strategy:** PMA remains the final workflow-closure authority. Tech Lead is the default commit authority for direct execution paths, and Workflow Runner may perform the delegated final commit only in explicit full-team complex workflows.
 *   **Authority Matrix:** Follow the canonical authority and output rules in `docs/core/role_contracts.md` for ownership, verification, commit authority, and closure decisions.
-*   **Commit Message Policy:** Every commit message must use a concise subject line in the format `<type>: <optional-task-id> <short summary>` and must include a brief body explaining exactly what the commit is for. If the commit is associated with a task, include the task ID in the subject.
-*   **Implementation Evidence Collection:** Every `implementation` task must produce an **Evidence Packet** in `evidences/[feature_task_name]/`. This MUST include:
-    *   `SUMMARY.md`: A brief explanation of what was tested and what the attached files prove.
-    *   `logs/`: Terminal output from verification commands.
-    *   `screenshots/`: Visual proof (mandatory for UI changes).
+*   **Commit Message Policy:** Every commit message must follow the repository's active commit messaging policy.
+*   **Implementation Evidence Collection:** Every `implementation` task must produce the verification artifacts required by the repository's testing and evidence policy.
 *   **Atomic Commitment:** A task is only complete when the code AND the "Truth" documentation (`docs/product/`, `docs/architecture/`, etc.) are updated in a single atomic commit. The SCR file is then marked as `Implemented`.
 *   **Batch Integrity:** In delegated workflow mode, the PMA should aim to complete the entire assigned batch. If a single task is blocked, it is isolated in `tasks/blocked/`, and the PMA continues with the rest of the batch if possible.
 
-## 7. Mandatory Documentation Update Matrix
+## 7. Repository Documentation Policy
 
-Every task MUST ensure the following files are updated if relevant:
+All documentation updates must follow the repository's documentation policy for:
 
-| Document Level | File Path | Responsible Agent |
-| :--- | :--- | :--- |
-| **Product Overview** | `docs/product/PRODUCT_OVERVIEW.md` | Business Analyst |
-| **Features List** | `docs/product/FEATURES_LIST.md` | Business Analyst |
-| **Architecture** | `docs/architecture/TECHNICAL_ARCHITECTURE.md` | Technical Architect |
-| **Feature Spec** | `docs/features/[feature]/SPECIFICATION.md` | BA & Architect |
-| **Tech Guidelines** | `docs/core/technical_guidelines.md` | Tech Lead / Architect |
-| **CodeMap** | `codemap.yml` | Developer / Architect |
+- where steady-state product and technical truth belongs
+- which documents must be updated for a given change
+- documentation ownership, naming, and layout conventions
 
-<include:docs/core/documentation_structure.md>
-<include:docs/core/role_contracts.md>
-<include:docs/core/task_model.md>
+<include:plugin:docs/core/role_contracts.md>
+<include:policy:documentation-guidelines.md>
+<include:plugin:docs/core/task_model.md>

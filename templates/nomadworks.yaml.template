@@ -9,8 +9,11 @@ defaults:
   # permissions: allow
 
 features:
-  debug_dumps: true # Dumps final agent configs to .nomadworks/agents/ for verification
+  debug_dumps: true # Dumps final agent configs to .nomadworks/generated/agents/ for verification
   # debug_logs: false # Enable detailed console logging for the plugin
   codemap_verification: true
+
+policies:
+  extract_defaults: none # Set to 'all' to write bundled policy defaults to .nomadworks/generated/policies/
 
 agents:

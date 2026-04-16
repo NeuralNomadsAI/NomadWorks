@@ -9,34 +9,127 @@ import { nomadworks_validate_logic } from "./validate_logic.js";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
+const BUNDLE_POLICIES_DIR = path.join(PKG_ROOT, "policies");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 const MANDATORY_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 const MINI_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 const DISCUSSION_BACKFILL_FETCH_LIMIT = 100;
+const NOMADWORKS_DIRNAME = ".nomadworks";
+const LEGACY_NOMADWORKS_DIRNAME = ".codenomad";
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
+function nomadworksDir(worktree) {
+  return path.join(worktree, NOMADWORKS_DIRNAME);
+}
+
+function legacyNomadworksDir(worktree) {
+  return path.join(worktree, LEGACY_NOMADWORKS_DIRNAME);
+}
+
+function repoConfigPath(worktree) {
+  return path.join(nomadworksDir(worktree), "nomadworks.yaml");
+}
+
+function legacyRepoConfigPath(worktree) {
+  return path.join(legacyNomadworksDir(worktree), "nomadworks.yaml");
+}
+
+function repoPoliciesDir(worktree) {
+  return path.join(nomadworksDir(worktree), "policies");
+}
+
+function generatedPoliciesDir(worktree) {
+  return path.join(nomadworksDir(worktree), "generated", "policies");
+}
+
+function generatedAgentsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "generated", "agents");
+}
+
+function repoAgentsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "agents");
+}
+
+function legacyRepoAgentsDir(worktree) {
+  return path.join(legacyNomadworksDir(worktree), "nomadworks", "agents");
+}
+
+function runtimeDiscussionRegistryPath(worktree) {
+  return path.join(nomadworksDir(worktree), "runtime", "discussions.json");
+}
+
+function legacyDiscussionRegistryPath(worktree) {
+  return path.join(legacyNomadworksDir(worktree), "runtime", "discussions.json");
+}
+
+function resolveConfigPath(worktree) {
+  const repoPath = repoConfigPath(worktree);
+  if (fs.existsSync(repoPath)) return repoPath;
+
+  const legacyPath = legacyRepoConfigPath(worktree);
+  if (fs.existsSync(legacyPath)) return legacyPath;
+
+  return repoPath;
+}
+
+function normalizePolicyExtraction(value) {
+  if (typeof value !== "string") return "none";
+  return value.trim().toLowerCase() === "all" ? "all" : "none";
+}
+
+function resolveIncludeFile(includeRef, repoRoot, bundleRoot) {
+  const trimmed = includeRef.trim();
+  const scopedMatch = trimmed.match(/^([a-z]+):(.*)$/i);
+  const scope = scopedMatch?.[1]?.toLowerCase();
+  const target = scopedMatch ? scopedMatch[2].trim() : trimmed;
+
+  const resolveRelative = (baseDir, relativePath) => {
+    if (!relativePath) return null;
+    return path.isAbsolute(relativePath) ? relativePath : path.join(baseDir, relativePath);
+  };
+
+  if (scope === "plugin") {
+    const filePath = resolveRelative(bundleRoot, target);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
+  if (scope === "repo") {
+    const filePath = resolveRelative(nomadworksDir(repoRoot), target);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
+  if (scope === "policy") {
+    const repoPolicyPath = resolveRelative(repoPoliciesDir(repoRoot), target);
+    if (repoPolicyPath && fs.existsSync(repoPolicyPath)) return repoPolicyPath;
+
+    const bundledPolicyPath = resolveRelative(BUNDLE_POLICIES_DIR, target);
+    return bundledPolicyPath && fs.existsSync(bundledPolicyPath) ? bundledPolicyPath : null;
+  }
+
+  const repoPath = resolveRelative(repoRoot, target);
+  if (repoPath && fs.existsSync(repoPath)) return repoPath;
+
+  const bundlePath = resolveRelative(bundleRoot, target);
+  return bundlePath && fs.existsSync(bundlePath) ? bundlePath : null;
+}
+
 /**
- * Resolves <include:filename.md> markers recursively.
- * Checks repo (worktree) first, then falls back to bundle root.
+ * Resolves <include:...> markers recursively.
+ * Supported forms:
+ * - <include:path/to/file.md> (legacy: repo root first, then plugin bundle)
+ * - <include:plugin:path/to/file.md>
+ * - <include:repo:path/inside/.nomadworks>
+ * - <include:policy:file.md> (.nomadworks/policies first, then bundled defaults)
  */
 function resolveIncludes(text, repoRoot, bundleRoot) {
   const includeRegex = /<include:(.*?)>/g;
-  return text.replace(includeRegex, (match, filename) => {
-    // Check repo first, then bundle
-    const repoPath = path.isAbsolute(filename) ? filename : path.join(repoRoot, filename);
-    const bundlePath = path.isAbsolute(filename) ? filename : path.join(bundleRoot, filename);
-
-    let filePath = null;
-    if (fs.existsSync(repoPath)) {
-      filePath = repoPath;
-    } else if (fs.existsSync(bundlePath)) {
-      filePath = bundlePath;
-    }
+  return text.replace(includeRegex, (match, includeRef) => {
+    const filePath = resolveIncludeFile(includeRef, repoRoot, bundleRoot);
 
     if (!filePath) {
-      console.warn(`[NomadWorks] Include file not found: ${filename}`);
-      return `\n\n# ERROR: Include file not found: ${filename}\n\n`;
+      console.warn(`[NomadWorks] Include file not found: ${includeRef}`);
+      return `\n\n# ERROR: Include file not found: ${includeRef}\n\n`;
     }
 
     const content = fs.readFileSync(filePath, "utf8");
@@ -117,12 +210,10 @@ function slugifyTitle(input) {
     .slice(0, 80) || "discussion";
 }
 
-function discussionRegistryPath(worktree) {
-  return path.join(worktree, ".codenomad", "runtime", "discussions.json");
-}
-
 function loadDiscussionRegistry(worktree) {
-  const registryPath = discussionRegistryPath(worktree);
+  const registryPath = fs.existsSync(runtimeDiscussionRegistryPath(worktree))
+    ? runtimeDiscussionRegistryPath(worktree)
+    : legacyDiscussionRegistryPath(worktree);
   if (!fs.existsSync(registryPath)) {
     return { version: 1, active: {} };
   }
@@ -138,7 +229,7 @@ function loadDiscussionRegistry(worktree) {
 }
 
 function saveDiscussionRegistry(worktree, registry) {
-  const registryPath = discussionRegistryPath(worktree);
+  const registryPath = runtimeDiscussionRegistryPath(worktree);
   const runtimeDir = path.dirname(registryPath);
   if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), "utf8");
@@ -269,7 +360,9 @@ function isAgentEnabledForTeamMode(agentId, teamMode) {
 
 function applyTeamConfigRules(repoCfg) {
   repoCfg.agents ??= {};
+  repoCfg.policies ??= {};
   repoCfg.team_mode = normalizeTeamMode(repoCfg.team_mode);
+  repoCfg.policies.extract_defaults = normalizePolicyExtraction(repoCfg.policies.extract_defaults);
 
   for (const id of MANDATORY_AGENTS) {
     if (repoCfg.agents[id]?.enabled === false) {
@@ -297,11 +390,35 @@ function getOperatingTeamMode(repoCfg) {
 }
 
 function readResolvedFile(relativePath, worktree) {
-  const repoPath = path.join(worktree, relativePath);
-  const bundlePath = path.join(PKG_ROOT, relativePath);
-  const filePath = fs.existsSync(repoPath) ? repoPath : bundlePath;
-  if (!fs.existsSync(filePath)) return "";
+  const filePath = resolveIncludeFile(`plugin:${relativePath}`, worktree, PKG_ROOT);
+  if (!filePath || !fs.existsSync(filePath)) return "";
   return resolveIncludes(fs.readFileSync(filePath, "utf8"), worktree, PKG_ROOT).trim();
+}
+
+function syncGeneratedPolicies(worktree, repoCfg) {
+  if (repoCfg.policies?.extract_defaults !== "all") return;
+  if (!fs.existsSync(BUNDLE_POLICIES_DIR)) return;
+
+  const generatedDir = generatedPoliciesDir(worktree);
+  if (!fs.existsSync(generatedDir)) fs.mkdirSync(generatedDir, { recursive: true });
+
+  const policyFiles = fs.readdirSync(BUNDLE_POLICIES_DIR).filter(file => file.endsWith(".md") && file !== "README.md");
+
+  for (const file of policyFiles) {
+    const sourcePath = path.join(BUNDLE_POLICIES_DIR, file);
+    const source = fs.readFileSync(sourcePath, "utf8").trimEnd();
+    const generated = [
+      "<!--",
+      "Generated from NomadWorks plugin defaults.",
+      "Do not edit this file directly; it may be overwritten.",
+      `To customize this policy, copy it to .nomadworks/policies/${file}.`,
+      "-->",
+      "",
+      source,
+      ""
+    ].join("\n");
+    fs.writeFileSync(path.join(generatedDir, file), generated, "utf8");
+  }
 }
 
 function getModePromptFragment(agentId, operatingTeamMode, worktree) {
@@ -323,8 +440,8 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
 
 export default async function NomadWorksPlugin(input) {
   const worktree = path.resolve(input.worktree || process.cwd());
-  const debugDir = path.join(worktree, ".nomadworks", "agents");
-  const configPath = path.join(worktree, ".codenomad", "nomadworks.yaml");
+  const debugDir = generatedAgentsDir(worktree);
+  const configPath = resolveConfigPath(worktree);
   const discussionRegistry = loadDiscussionRegistry(worktree);
 
   // Load project-specific configuration
@@ -337,6 +454,7 @@ export default async function NomadWorksPlugin(input) {
     }
   }
   repoCfg = applyTeamConfigRules(repoCfg);
+  syncGeneratedPolicies(worktree, repoCfg);
   const operatingTeamMode = getOperatingTeamMode(repoCfg);
 
   const startAndMonitorWorkflow = async (sessionId, pmaSessionId, initialText, taskPath = null) => {
@@ -407,8 +525,10 @@ export default async function NomadWorksPlugin(input) {
           return "Error: team_mode must be either 'mini' or 'full'.";
         }
 
-        const cfgDir = path.join(context.worktree, ".codenomad");
+        const cfgDir = nomadworksDir(context.worktree);
+        const policiesDir = repoPoliciesDir(context.worktree);
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
+        if (!fs.existsSync(policiesDir)) fs.mkdirSync(policiesDir, { recursive: true });
 
         // Discover all agent IDs to enable them explicitly
         const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR) 
@@ -417,8 +537,9 @@ export default async function NomadWorksPlugin(input) {
 
         const nomadworksTmplPath = path.join(TEMPLATES_DIR, "nomadworks.yaml.template");
         const codemapTmplPath = path.join(TEMPLATES_DIR, "codemap.yml.template");
+        const policiesReadmePath = path.join(BUNDLE_POLICIES_DIR, "README.md");
 
-        if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath)) {
+        if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath) || !fs.existsSync(policiesReadmePath)) {
           return "Error: Initialization templates not found in plugin.";
         }
 
@@ -438,6 +559,7 @@ export default async function NomadWorksPlugin(input) {
 
         const cfgFilePath = path.join(cfgDir, "nomadworks.yaml");
         const rootCodemapPath = path.join(context.worktree, "codemap.yml");
+        const policiesReadmeTargetPath = path.join(policiesDir, "README.md");
 
         if (!fs.existsSync(cfgFilePath)) {
           fs.writeFileSync(cfgFilePath, nomadworksConfig, "utf8");
@@ -445,6 +567,10 @@ export default async function NomadWorksPlugin(input) {
 
         if (!fs.existsSync(rootCodemapPath)) {
           fs.writeFileSync(rootCodemapPath, codemapConfig, "utf8");
+        }
+
+        if (!fs.existsSync(policiesReadmeTargetPath)) {
+          fs.writeFileSync(policiesReadmeTargetPath, fs.readFileSync(policiesReadmePath, "utf8"), "utf8");
         }
 
         // Scaffold Task Registries
@@ -471,7 +597,7 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
-        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .codenomad/nomadworks.yaml, registries, and codemap.yml created.`;
+        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, policy README, registries, and codemap.yml created.`;
       }
     }),
     nomadworks_validate: tool({
@@ -793,10 +919,12 @@ export default async function NomadWorksPlugin(input) {
       const nomadworksActive = repoCfg && repoCfg.enabled === true;
 
       // 1. Identify and compile all NomadWorks agents
-      const repoAgentsDir = path.join(worktree, ".codenomad", "nomadworks", "agents");
+      const repoAgentsPrimaryDir = repoAgentsDir(worktree);
+      const legacyAgentsDir = legacyRepoAgentsDir(worktree);
       const agentSources = [];
       if (fs.existsSync(BUNDLE_AGENTS_DIR)) agentSources.push(BUNDLE_AGENTS_DIR);
-      if (fs.existsSync(repoAgentsDir)) agentSources.push(repoAgentsDir);
+      if (fs.existsSync(repoAgentsPrimaryDir)) agentSources.push(repoAgentsPrimaryDir);
+      if (fs.existsSync(legacyAgentsDir)) agentSources.push(legacyAgentsDir);
 
       const ourAgents = {};
 

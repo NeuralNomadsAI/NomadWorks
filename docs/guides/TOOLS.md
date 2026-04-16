@@ -12,7 +12,8 @@ Initializes NomadWorks in the current repository.
 
 ### What it creates
 
-- `.codenomad/nomadworks.yaml`
+- `.nomadworks/nomadworks.yaml`
+- `.nomadworks/policies/README.md`
 - `codemap.yml`
 - `tasks/current.md`
 - `tasks/done.md`
@@ -52,7 +53,7 @@ Also provide:
 - Use `existing_discussion_id` plus `previous_message_count` to reopen an older discussion and include a small amount of newer conversation that happened before the reopen call.
 - Only one active discussion is allowed per session.
 - Discussion transcripts are stored in `tasks/discussions/`.
-- Active discussion state is persisted in `.codenomad/runtime/discussions.json`.
+- Active discussion state is persisted in `.nomadworks/runtime/discussions.json`.
 - Only discussion-capable agents should use these discussion tools.
 
 ## `nomadworks_stop_discussion`

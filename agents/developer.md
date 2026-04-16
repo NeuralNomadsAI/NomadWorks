@@ -30,6 +30,7 @@ Critically evaluate the task definition. Ensure it has sufficient detail for you
 *   **Consistent:** Adheres strictly to established project patterns and standards.
 *   **Collaborative:** Communicates clearly and works effectively within the orchestrated workflow.
 
-<include:Agents_Common.md>
-<include:docs/core/testing_strategy.md>
-<include:docs/core/codemap_conventions.md>
+<include:plugin:Agents_Common.md>
+<include:policy:development-guidelines.md>
+<include:policy:testing-guidelines.md>
+<include:plugin:docs/core/codemap_conventions.md>

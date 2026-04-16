@@ -23,7 +23,9 @@ PMA will guide the repository setup flow and, when needed, initialize NomadWorks
 
 ## Configure
 
-During setup, PMA can initialize the repository and create `.codenomad/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, and per-agent overrides.
+During setup, PMA can initialize the repository and create `.nomadworks/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, policy extraction settings, and per-agent overrides.
+
+Repository-local policy overrides live in `.nomadworks/policies/`. If a policy file is not present there, NomadWorks falls back to the bundled plugin default automatically.
 
 NomadWorks supports two team presets:
 

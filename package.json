@@ -20,6 +20,7 @@
     "dist",
     "agents",
     "docs",
+    "policies",
     "templates",
     "Agents_Common.md"
   ],

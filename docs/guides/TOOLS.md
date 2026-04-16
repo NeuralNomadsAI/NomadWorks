@@ -20,6 +20,13 @@ Initializes NomadWorks in the current repository.
 - `docs/scrs/current.md`
 - `docs/scrs/done.md`
 
+### Notes
+
+- Repository-specific agent additions are optional and can be created later under `.nomadworks/agents/`.
+- Explicit full prompt replacements are optional and can be created later under `.nomadworks/agent-overrides/`.
+- Generated prompt dumps go to `.nomadworks/generated/agents/` when `features.debug_dumps` is enabled.
+- Generated reference policy files go to `.nomadworks/generated/policies/` when `policies.extract_defaults` is set to `all`.
+
 ## `nomadworks_validate`
 
 Validates NomadWorks workflow artifacts and CodeMap integrity.

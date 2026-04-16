@@ -47,8 +47,12 @@ function generatedAgentsDir(worktree) {
   return path.join(nomadworksDir(worktree), "generated", "agents");
 }
 
-function repoAgentsDir(worktree) {
+function repoAgentAdditionsDir(worktree) {
   return path.join(nomadworksDir(worktree), "agents");
+}
+
+function repoAgentOverridesDir(worktree) {
+  return path.join(nomadworksDir(worktree), "agent-overrides");
 }
 
 function legacyRepoAgentsDir(worktree) {
@@ -393,6 +397,33 @@ function readResolvedFile(relativePath, worktree) {
   const filePath = resolveIncludeFile(`plugin:${relativePath}`, worktree, PKG_ROOT);
   if (!filePath || !fs.existsSync(filePath)) return "";
   return resolveIncludes(fs.readFileSync(filePath, "utf8"), worktree, PKG_ROOT).trim();
+}
+
+function loadMarkdownFragment(filePath, worktree) {
+  if (!fs.existsSync(filePath)) return "";
+
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const { body } = parseFrontmatter(raw);
+    return resolveIncludes(body.trim(), worktree, PKG_ROOT);
+  } catch (e) {
+    console.error(`[NomadWorks] Failed to read markdown fragment ${filePath}:`, e);
+    return "";
+  }
+}
+
+function loadAgentDefinition(filePath, worktree) {
+  if (!fs.existsSync(filePath)) return null;
+
+  try {
+    const rawContent = fs.readFileSync(filePath, "utf8");
+    const { data, body } = parseFrontmatter(rawContent);
+    const prompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
+    return { data, prompt };
+  } catch (e) {
+    console.error(`[NomadWorks] Failed to read agent definition ${filePath}:`, e);
+    return null;
+  }
 }
 
 function syncGeneratedPolicies(worktree, repoCfg) {
@@ -918,109 +949,103 @@ export default async function NomadWorksPlugin(input) {
       
       const nomadworksActive = repoCfg && repoCfg.enabled === true;
 
-      // 1. Identify and compile all NomadWorks agents
-      const repoAgentsPrimaryDir = repoAgentsDir(worktree);
+      // 1. Identify and compile all NomadWorks agents from bundled bases,
+      // optional explicit overrides, and additive repo-local fragments.
+      const repoAgentAdditions = repoAgentAdditionsDir(worktree);
+      const repoAgentOverrides = repoAgentOverridesDir(worktree);
       const legacyAgentsDir = legacyRepoAgentsDir(worktree);
-      const agentSources = [];
-      if (fs.existsSync(BUNDLE_AGENTS_DIR)) agentSources.push(BUNDLE_AGENTS_DIR);
-      if (fs.existsSync(repoAgentsPrimaryDir)) agentSources.push(repoAgentsPrimaryDir);
-      if (fs.existsSync(legacyAgentsDir)) agentSources.push(legacyAgentsDir);
+      const bundledAgentFiles = fs.existsSync(BUNDLE_AGENTS_DIR)
+        ? fs.readdirSync(BUNDLE_AGENTS_DIR).filter(f => f.endsWith(".md"))
+        : [];
 
       const ourAgents = {};
 
-      for (const agentsDir of agentSources) {
-        if (!fs.existsSync(agentsDir)) continue;
-        
-        let files = [];
-        try {
-          files = fs.readdirSync(agentsDir).filter(f => f.endsWith(".md"));
-        } catch (e) {
-          console.error(`[NomadWorks] Failed to read agents from ${agentsDir}:`, e);
+      for (const file of bundledAgentFiles) {
+        const id = file.replace(".md", "");
+
+        if (!nomadworksActive && id !== "product_manager") {
           continue;
         }
 
-        for (const file of files) {
-          const id = file.replace(".md", "");
-          
-          if (!nomadworksActive && id !== "product_manager") {
-            continue;
-          }
+        const agentOverride = repoCfg.agents?.[id] || {};
+        if (nomadworksActive && !isAgentEffectivelyEnabled(id, repoCfg)) continue;
 
-          const agentOverride = repoCfg.agents?.[id] || {};
-          if (nomadworksActive && !isAgentEffectivelyEnabled(id, repoCfg)) continue;
+        const bundledDefinition = loadAgentDefinition(path.join(BUNDLE_AGENTS_DIR, file), worktree);
+        if (!bundledDefinition) continue;
 
-          const filePath = path.join(agentsDir, file);
-          let rawContent;
-          try {
-            rawContent = fs.readFileSync(filePath, "utf8");
-          } catch (e) {
-            console.error(`[NomadWorks] Failed to read agent file ${filePath}:`, e);
-            continue;
-          }
+        const explicitOverride = loadAgentDefinition(path.join(repoAgentOverrides, file), worktree)
+          || loadAgentDefinition(path.join(legacyAgentsDir, file), worktree);
 
-          const { data, body } = parseFrontmatter(rawContent);
-          let finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
-          const modePromptFragment = getModePromptFragment(id, operatingTeamMode, worktree);
-          if (modePromptFragment) {
-            finalPrompt = `${finalPrompt}\n\n${modePromptFragment}`;
-          }
-          const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
-          const model = agentOverride.model || data.model || repoCfg.defaults?.model;
-          
-          const agentConfig = {
-            description: data.description,
-            mode: agentOverride.mode || data.mode || "subagent",
-            prompt: finalPrompt,
-            tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
-            permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
-            model: toModelString(provider, model),
-            temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
-            disable: false
-          };
+        const activeDefinition = explicitOverride || bundledDefinition;
+        const { data } = activeDefinition;
 
-          const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
-          
-          const defaults = repoCfg.defaults || {};
-          for (const k of Object.keys(defaults)) {
-            if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
-          }
-          for (const k of Object.keys(data)) {
-            if (!specialKeys.includes(k)) agentConfig[k] = data[k];
-          }
-          for (const k of Object.keys(agentOverride)) {
-            if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
-          }
+        let finalPrompt = activeDefinition.prompt;
+        const modePromptFragment = getModePromptFragment(id, operatingTeamMode, worktree);
+        if (modePromptFragment) {
+          finalPrompt = `${finalPrompt}\n\n${modePromptFragment}`;
+        }
 
-          if (Array.isArray(agentOverride.tools_add)) {
-            agentConfig.tools ??= {};
-            for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
-          }
-          if (Array.isArray(agentOverride.tools_remove)) {
-            if (agentConfig.tools) {
-              for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
-            }
-          }
+        const additionFragment = loadMarkdownFragment(path.join(repoAgentAdditions, file), worktree);
+        if (additionFragment) {
+          finalPrompt = `${finalPrompt}\n\n# Repository-Specific ${id} Additions\n\n${additionFragment}`;
+        }
 
-          if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
-            if (agentConfig.tools) {
-              delete agentConfig.tools.nomadflow_run_workflow;
-              delete agentConfig.tools.nomadflow_prompt_workflow;
-            }
+        const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
+        const model = agentOverride.model || data.model || repoCfg.defaults?.model;
+
+        const agentConfig = {
+          description: data.description,
+          mode: agentOverride.mode || data.mode || "subagent",
+          prompt: finalPrompt,
+          tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
+          permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
+          model: toModelString(provider, model),
+          temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
+          disable: false
+        };
+
+        const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
+
+        const defaults = repoCfg.defaults || {};
+        for (const k of Object.keys(defaults)) {
+          if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
+        }
+        for (const k of Object.keys(data)) {
+          if (!specialKeys.includes(k)) agentConfig[k] = data[k];
+        }
+        for (const k of Object.keys(agentOverride)) {
+          if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
+        }
+
+        if (Array.isArray(agentOverride.tools_add)) {
+          agentConfig.tools ??= {};
+          for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
+        }
+        if (Array.isArray(agentOverride.tools_remove)) {
+          if (agentConfig.tools) {
+            for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
           }
+        }
 
-          ourAgents[id] = agentConfig;
+        if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
+          if (agentConfig.tools) {
+            delete agentConfig.tools.nomadflow_run_workflow;
+            delete agentConfig.tools.nomadflow_prompt_workflow;
+          }
+        }
 
-          if (repoCfg.features?.debug_dumps !== false) {
-            const debugPath = path.join(debugDir, `${id}.md`);
-            const { prompt, ...dumpConfig } = agentConfig;
-            const debugHeader = `---
+        ourAgents[id] = agentConfig;
+
+        if (repoCfg.features?.debug_dumps !== false) {
+          const debugPath = path.join(debugDir, `${id}.md`);
+          const { prompt, ...dumpConfig } = agentConfig;
+          const debugHeader = `---
 ${YAML.stringify(dumpConfig).trim()}
 ---`;
-            try {
-              if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-              fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
-            } catch (e) { /* ignore debug errors */ }
-          }
+          try {
+            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+            fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+          } catch (e) { /* ignore debug errors */ }
         }
       }
 

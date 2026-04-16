@@ -52,7 +52,7 @@ When PMA initializes the repository, NomadWorks creates:
 
 ## 5. Configure NomadWorks
 
-Edit `.nomadworks/nomadworks.yaml` to set defaults, features, policy extraction behavior, and per-agent overrides.
+Edit `.nomadworks/nomadworks.yaml` to set defaults, features, policy extraction behavior, and per-agent config overrides. Use `.nomadworks/agents/` for additive repo-specific agent instructions and `.nomadworks/agent-overrides/` only for explicit full prompt replacements.
 
 See:
 

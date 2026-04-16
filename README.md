@@ -23,9 +23,21 @@ PMA will guide the repository setup flow and, when needed, initialize NomadWorks
 
 ## Configure
 
-During setup, PMA can initialize the repository and create `.nomadworks/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, policy extraction settings, and per-agent overrides.
+During setup, PMA can initialize the repository and create `.nomadworks/nomadworks.yaml`. NomadWorks reads this file for repository-local defaults, feature flags, policy extraction settings, and per-agent config overrides.
 
 Repository-local policy overrides live in `.nomadworks/policies/`. If a policy file is not present there, NomadWorks falls back to the bundled plugin default automatically.
+
+Repository-specific agent additions can live in `.nomadworks/agents/`. For rare advanced cases, explicit full prompt replacements can live in `.nomadworks/agent-overrides/`.
+
+## Repository Customization
+
+- `.nomadworks/policies/*.md`: shared repository policy overrides used by multiple agents
+- `.nomadworks/agents/<agent>.md`: additive repository-specific instructions appended to one bundled agent prompt
+- `.nomadworks/agent-overrides/<agent>.md`: explicit full prompt replacement for advanced cases
+- `.nomadworks/generated/agents/`: generated final prompt dumps for inspection when `features.debug_dumps` is enabled
+- `.nomadworks/generated/policies/`: generated reference copies of bundled default policies when `policies.extract_defaults` is set to `all`
+
+Runtime prompt resolution prefers repository-local policies and agent additions when present, while keeping the plugin-owned workflow and role model intact by default.
 
 NomadWorks supports two team presets:
 

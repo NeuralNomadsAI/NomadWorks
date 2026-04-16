@@ -34,6 +34,14 @@ These agents can talk directly with the user and turn meaningful discussions int
 
 `mode: all` does not make an agent an orchestrator by default. PMA remains the sole workflow orchestrator. Discussion-capable agents may speak directly with the user, but workflow-relevant work must still be handed back through task files and PMA-owned orchestration.
 
+## Repository Customization
+
+- `.nomadworks/agents/<agent>.md`: appends repository-specific instructions to the bundled agent prompt.
+- `.nomadworks/agent-overrides/<agent>.md`: explicitly replaces the bundled base prompt for advanced cases.
+- `.nomadworks/policies/*.md`: overrides shared repository policy files used by multiple agents.
+
+Use additive agent files and shared policies by default. Prefer explicit full prompt replacement only when a repository truly needs to take over an agent's base prompt.
+
 ## Typical usage by task complexity
 
 ### Tiny

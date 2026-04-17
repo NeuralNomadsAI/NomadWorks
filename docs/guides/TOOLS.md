@@ -14,6 +14,10 @@ Initializes NomadWorks in the current repository.
 
 - `.nomadworks/nomadworks.yaml`
 - `.nomadworks/policies/README.md`
+- `.nomadworks/agents/README.md`
+- `.nomadworks/agent-additions/README.md`
+- `.nomadworks/generated/agents/README.md`
+- `.nomadworks/generated/policies/README.md`
 - `codemap.yml`
 - `tasks/current.md`
 - `tasks/done.md`
@@ -22,10 +26,11 @@ Initializes NomadWorks in the current repository.
 
 ### Notes
 
-- Repository-specific agent additions are optional and can be created later under `.nomadworks/agents/`.
-- Explicit full prompt replacements are optional and can be created later under `.nomadworks/agent-overrides/`.
+- Full repository-local agent definitions or custom agents are optional and can be created later under `.nomadworks/agents/`.
+- Repository-specific additive agent instructions are optional and can be created later under `.nomadworks/agent-additions/`.
 - Generated prompt dumps go to `.nomadworks/generated/agents/` when `features.debug_dumps` is enabled.
 - Generated reference policy files go to `.nomadworks/generated/policies/` when `policies.extract_defaults` is set to `all`.
+- The scaffolded README files in `.nomadworks/agents/` and `.nomadworks/agent-additions/` list common `plugin:` and `policy:` includes that custom agents can reuse.
 
 ## `nomadworks_validate`
 

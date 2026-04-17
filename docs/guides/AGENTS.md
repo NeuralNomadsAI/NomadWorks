@@ -36,11 +36,11 @@ These agents can talk directly with the user and turn meaningful discussions int
 
 ## Repository Customization
 
-- `.nomadworks/agents/<agent>.md`: appends repository-specific instructions to the bundled agent prompt.
-- `.nomadworks/agent-overrides/<agent>.md`: explicitly replaces the bundled base prompt for advanced cases.
+- `.nomadworks/agents/<agent>.md`: full repository-local agent definition. Use this to override a bundled agent's base prompt or define a brand new custom repository agent.
+- `.nomadworks/agent-additions/<agent>.md`: appends repository-specific instructions to a bundled or custom agent prompt.
 - `.nomadworks/policies/*.md`: overrides shared repository policy files used by multiple agents.
 
-Use additive agent files and shared policies by default. Prefer explicit full prompt replacement only when a repository truly needs to take over an agent's base prompt.
+Use shared policies and additive agent files by default. Use full agent definitions in `.nomadworks/agents/` when a repository needs a custom agent or needs to take over an agent's base prompt.
 
 ## Typical usage by task complexity
 

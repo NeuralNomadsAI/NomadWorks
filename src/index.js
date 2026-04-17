@@ -47,12 +47,12 @@ function generatedAgentsDir(worktree) {
   return path.join(nomadworksDir(worktree), "generated", "agents");
 }
 
-function repoAgentAdditionsDir(worktree) {
+function repoAgentsDir(worktree) {
   return path.join(nomadworksDir(worktree), "agents");
 }
 
-function repoAgentOverridesDir(worktree) {
-  return path.join(nomadworksDir(worktree), "agent-overrides");
+function repoAgentAdditionsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "agent-additions");
 }
 
 function legacyRepoAgentsDir(worktree) {
@@ -75,6 +75,18 @@ function resolveConfigPath(worktree) {
   if (fs.existsSync(legacyPath)) return legacyPath;
 
   return repoPath;
+}
+
+function listMarkdownFiles(dirPath) {
+  if (!fs.existsSync(dirPath)) return [];
+
+  try {
+    return fs.readdirSync(dirPath)
+      .filter(file => file.endsWith(".md") && file.toLowerCase() !== "readme.md");
+  } catch (e) {
+    console.error(`[NomadWorks] Failed to read markdown files from ${dirPath}:`, e);
+    return [];
+  }
 }
 
 function normalizePolicyExtraction(value) {
@@ -452,6 +464,117 @@ function syncGeneratedPolicies(worktree, repoCfg) {
   }
 }
 
+function ensureReadmeFile(dirPath, content) {
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+  const readmePath = path.join(dirPath, "README.md");
+  if (!fs.existsSync(readmePath)) {
+    fs.writeFileSync(readmePath, content, "utf8");
+  }
+}
+
+function scaffoldNomadworksReadmes(worktree) {
+  ensureReadmeFile(repoPoliciesDir(worktree), fs.readFileSync(path.join(BUNDLE_POLICIES_DIR, "README.md"), "utf8"));
+  ensureReadmeFile(repoAgentsDir(worktree), [
+    "# Repository Agents",
+    "",
+    "Place full repository-local agent definitions here.",
+    "",
+    "- Use `.nomadworks/agents/<agent>.md` to override a bundled agent's full base definition.",
+    "- Use `.nomadworks/agents/<agent>.md` to define a brand new custom repository agent.",
+    "- Files in this folder are treated as full agent definitions.",
+    "- `README.md` is ignored by agent discovery.",
+    "",
+    "## Include Types Available In Custom Agents",
+    "",
+    "Custom agents can use the same include resolution as bundled agents:",
+    "",
+    "- `<include:plugin:...>` for plugin-owned shared guidance",
+    "- `<include:policy:...>` for repository-overridable policy files with bundled defaults",
+    "- `<include:repo:...>` for explicit files under `.nomadworks/`",
+    "",
+    "## Common Plugin Includes",
+    "",
+    "- `plugin:Agents_Common.md`",
+    "- `plugin:docs/core/agent_orchestration.md`",
+    "- `plugin:docs/core/communication_guidelines.md`",
+    "- `plugin:docs/core/discussion_agent_guidelines.md`",
+    "- `plugin:docs/core/role_contracts.md`",
+    "- `plugin:docs/core/task_model.md`",
+    "- `plugin:docs/core/codemap_conventions.md`",
+    "- `plugin:docs/core/pma_mode_full.md`",
+    "- `plugin:docs/core/pma_mode_mini.md`",
+    "- `plugin:docs/core/tech_lead_mode_full.md`",
+    "- `plugin:docs/core/tech_lead_mode_mini.md`",
+    "",
+    "## Available Policy Includes",
+    "",
+    "- `policy:development-guidelines.md`",
+    "- `policy:testing-guidelines.md`",
+    "- `policy:documentation-guidelines.md`",
+    "- `policy:git-commit-messaging.md`",
+    "- `policy:product-guidelines.md`",
+    "- `policy:ui-ux-guidelines.md`",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(repoAgentAdditionsDir(worktree), [
+    "# Repository Agent Additions",
+    "",
+    "Place additive prompt fragments here to append repository-specific instructions to an existing agent.",
+    "",
+    "- Use `.nomadworks/agent-additions/<agent>.md` to add instructions to a bundled or custom repo agent.",
+    "- The matching base agent must exist in the plugin bundle or `.nomadworks/agents/`.",
+    "- `README.md` is ignored by agent discovery.",
+    "",
+    "## Include Types Available In Additions",
+    "",
+    "Agent additions can use the same include resolution as bundled agents and custom agents:",
+    "",
+    "- `<include:plugin:...>` for plugin-owned shared guidance",
+    "- `<include:policy:...>` for repository-overridable policy files with bundled defaults",
+    "- `<include:repo:...>` for explicit files under `.nomadworks/`",
+    "",
+    "## Common Plugin Includes",
+    "",
+    "- `plugin:Agents_Common.md`",
+    "- `plugin:docs/core/agent_orchestration.md`",
+    "- `plugin:docs/core/communication_guidelines.md`",
+    "- `plugin:docs/core/discussion_agent_guidelines.md`",
+    "- `plugin:docs/core/role_contracts.md`",
+    "- `plugin:docs/core/task_model.md`",
+    "- `plugin:docs/core/codemap_conventions.md`",
+    "",
+    "## Available Policy Includes",
+    "",
+    "- `policy:development-guidelines.md`",
+    "- `policy:testing-guidelines.md`",
+    "- `policy:documentation-guidelines.md`",
+    "- `policy:git-commit-messaging.md`",
+    "- `policy:product-guidelines.md`",
+    "- `policy:ui-ux-guidelines.md`",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(generatedAgentsDir(worktree), [
+    "# Generated Agent Prompts",
+    "",
+    "This folder contains generated final prompt dumps for inspection.",
+    "",
+    "- Files here are generated by NomadWorks and may be overwritten.",
+    "- Do not edit files here to customize agent behavior.",
+    "- Use `.nomadworks/agents/` for full agent definitions and `.nomadworks/agent-additions/` for additive instructions.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(generatedPoliciesDir(worktree), [
+    "# Generated Policy References",
+    "",
+    "This folder contains generated reference copies of bundled default policy files.",
+    "",
+    "- Files here are generated by NomadWorks and may be overwritten.",
+    "- Runtime does not read policies from this folder directly.",
+    "- Copy a file into `.nomadworks/policies/` if you want to customize it.",
+    ""
+  ].join("\n"));
+}
+
 function getModePromptFragment(agentId, operatingTeamMode, worktree) {
   const fragmentMap = {
     product_manager: {
@@ -485,6 +608,7 @@ export default async function NomadWorksPlugin(input) {
     }
   }
   repoCfg = applyTeamConfigRules(repoCfg);
+  scaffoldNomadworksReadmes(worktree);
   syncGeneratedPolicies(worktree, repoCfg);
   const operatingTeamMode = getOperatingTeamMode(repoCfg);
 
@@ -557,9 +681,7 @@ export default async function NomadWorksPlugin(input) {
         }
 
         const cfgDir = nomadworksDir(context.worktree);
-        const policiesDir = repoPoliciesDir(context.worktree);
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
-        if (!fs.existsSync(policiesDir)) fs.mkdirSync(policiesDir, { recursive: true });
 
         // Discover all agent IDs to enable them explicitly
         const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR) 
@@ -568,9 +690,7 @@ export default async function NomadWorksPlugin(input) {
 
         const nomadworksTmplPath = path.join(TEMPLATES_DIR, "nomadworks.yaml.template");
         const codemapTmplPath = path.join(TEMPLATES_DIR, "codemap.yml.template");
-        const policiesReadmePath = path.join(BUNDLE_POLICIES_DIR, "README.md");
-
-        if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath) || !fs.existsSync(policiesReadmePath)) {
+        if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath)) {
           return "Error: Initialization templates not found in plugin.";
         }
 
@@ -590,7 +710,6 @@ export default async function NomadWorksPlugin(input) {
 
         const cfgFilePath = path.join(cfgDir, "nomadworks.yaml");
         const rootCodemapPath = path.join(context.worktree, "codemap.yml");
-        const policiesReadmeTargetPath = path.join(policiesDir, "README.md");
 
         if (!fs.existsSync(cfgFilePath)) {
           fs.writeFileSync(cfgFilePath, nomadworksConfig, "utf8");
@@ -600,9 +719,7 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(rootCodemapPath, codemapConfig, "utf8");
         }
 
-        if (!fs.existsSync(policiesReadmeTargetPath)) {
-          fs.writeFileSync(policiesReadmeTargetPath, fs.readFileSync(policiesReadmePath, "utf8"), "utf8");
-        }
+        scaffoldNomadworksReadmes(context.worktree);
 
         // Scaffold Task Registries
         const tasksDir = path.join(context.worktree, "tasks");
@@ -628,7 +745,7 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
-        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, policy README, registries, and codemap.yml created.`;
+        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, repo policy/agent folders, registries, and codemap.yml created.`;
       }
     }),
     nomadworks_validate: tool({
@@ -950,33 +1067,44 @@ export default async function NomadWorksPlugin(input) {
       const nomadworksActive = repoCfg && repoCfg.enabled === true;
 
       // 1. Identify and compile all NomadWorks agents from bundled bases,
-      // optional explicit overrides, and additive repo-local fragments.
+      // repo-local full definitions, and additive repo-local fragments.
+      const repoAgentDefinitions = repoAgentsDir(worktree);
       const repoAgentAdditions = repoAgentAdditionsDir(worktree);
-      const repoAgentOverrides = repoAgentOverridesDir(worktree);
       const legacyAgentsDir = legacyRepoAgentsDir(worktree);
-      const bundledAgentFiles = fs.existsSync(BUNDLE_AGENTS_DIR)
-        ? fs.readdirSync(BUNDLE_AGENTS_DIR).filter(f => f.endsWith(".md"))
-        : [];
+      const bundledAgentFiles = listMarkdownFiles(BUNDLE_AGENTS_DIR);
+      const repoAgentFiles = listMarkdownFiles(repoAgentDefinitions);
+      const legacyAgentFiles = listMarkdownFiles(legacyAgentsDir);
+      const agentIds = new Set([
+        ...bundledAgentFiles.map(file => file.replace(".md", "")),
+        ...repoAgentFiles.map(file => file.replace(".md", "")),
+        ...legacyAgentFiles.map(file => file.replace(".md", ""))
+      ]);
 
       const ourAgents = {};
 
-      for (const file of bundledAgentFiles) {
-        const id = file.replace(".md", "");
+      for (const id of agentIds) {
+        const file = `${id}.md`;
 
         if (!nomadworksActive && id !== "product_manager") {
           continue;
         }
 
         const agentOverride = repoCfg.agents?.[id] || {};
-        if (nomadworksActive && !isAgentEffectivelyEnabled(id, repoCfg)) continue;
+        const hasRepoDefinedAgent = repoAgentFiles.includes(file) || legacyAgentFiles.includes(file);
+        if (nomadworksActive) {
+          const enabledByConfig = typeof agentOverride.enabled === "boolean" ? agentOverride.enabled : null;
+          const enabled = enabledByConfig !== null
+            ? enabledByConfig || MANDATORY_AGENTS.has(id)
+            : (hasRepoDefinedAgent ? true : isAgentEffectivelyEnabled(id, repoCfg));
+          if (!enabled) continue;
+        }
 
         const bundledDefinition = loadAgentDefinition(path.join(BUNDLE_AGENTS_DIR, file), worktree);
-        if (!bundledDefinition) continue;
-
-        const explicitOverride = loadAgentDefinition(path.join(repoAgentOverrides, file), worktree)
+        const repoDefinition = loadAgentDefinition(path.join(repoAgentDefinitions, file), worktree)
           || loadAgentDefinition(path.join(legacyAgentsDir, file), worktree);
 
-        const activeDefinition = explicitOverride || bundledDefinition;
+        const activeDefinition = repoDefinition || bundledDefinition;
+        if (!activeDefinition) continue;
         const { data } = activeDefinition;
 
         let finalPrompt = activeDefinition.prompt;

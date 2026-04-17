@@ -27,17 +27,23 @@ During setup, PMA can initialize the repository and create `.nomadworks/nomadwor
 
 Repository-local policy overrides live in `.nomadworks/policies/`. If a policy file is not present there, NomadWorks falls back to the bundled plugin default automatically.
 
-Repository-specific agent additions can live in `.nomadworks/agents/`. For rare advanced cases, explicit full prompt replacements can live in `.nomadworks/agent-overrides/`.
+Repository-local full agent definitions can live in `.nomadworks/agents/`. Use this folder to override a bundled agent's base prompt or define a brand new custom repository agent.
+
+Repository-specific additive agent instructions can live in `.nomadworks/agent-additions/`.
 
 ## Repository Customization
 
 - `.nomadworks/policies/*.md`: shared repository policy overrides used by multiple agents
-- `.nomadworks/agents/<agent>.md`: additive repository-specific instructions appended to one bundled agent prompt
-- `.nomadworks/agent-overrides/<agent>.md`: explicit full prompt replacement for advanced cases
+- `.nomadworks/agents/<agent>.md`: full repository-local agent definition that overrides a bundled agent or defines a new custom agent
+- `.nomadworks/agent-additions/<agent>.md`: additive repository-specific instructions appended to a bundled or custom agent prompt
 - `.nomadworks/generated/agents/`: generated final prompt dumps for inspection when `features.debug_dumps` is enabled
 - `.nomadworks/generated/policies/`: generated reference copies of bundled default policies when `policies.extract_defaults` is set to `all`
 
-Runtime prompt resolution prefers repository-local policies and agent additions when present, while keeping the plugin-owned workflow and role model intact by default.
+`nomadworks_init` also creates README placeholders in these folders so repositories can discover what each folder is for without those README files being treated as agents.
+
+The scaffolded README files in `.nomadworks/agents/` and `.nomadworks/agent-additions/` also list the common available `plugin:` and `policy:` includes that custom agents can reuse.
+
+Runtime prompt resolution prefers repository-local policies, agent definitions, and agent additions when present, while keeping the plugin-owned workflow and role model intact by default.
 
 NomadWorks supports two team presets:
 

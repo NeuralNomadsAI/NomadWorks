@@ -37,5 +37,5 @@ This document maps the major product domains and the features that belong to the
 ### Plugin Setup And Configuration
 
 - **Purpose:** Defines how NomadWorks is installed, configured, and enabled in an OpenCode environment.
-- **Owned Features:** plugin installation, OpenCode config wiring, `nomadworks.yaml`, agent additions, explicit agent overrides, policy overrides.
+- **Owned Features:** plugin installation, OpenCode config wiring, `nomadworks.yaml`, repo-local agent definitions, agent additions, policy overrides.
 - **Primary Docs:** `docs/setup/INSTALLATION.md`, `docs/setup/CONFIGURATION.md`

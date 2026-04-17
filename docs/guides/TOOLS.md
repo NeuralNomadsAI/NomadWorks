@@ -64,7 +64,8 @@ Also provide:
 - Use `0` if the discussion starts now.
 - Use `existing_discussion_id` plus `previous_message_count` to reopen an older discussion and include a small amount of newer conversation that happened before the reopen call.
 - Only one active discussion is allowed per session.
-- Discussion transcripts are stored in `tasks/discussions/`.
+- While active, raw discussion transcripts are stored in `.nomadworks/runtime/discussions/`.
+- The durable workflow artifact is written to `tasks/discussions/` when the discussion is stopped and summarized.
 - Active discussion state is persisted in `.nomadworks/runtime/discussions.json`.
 - Only discussion-capable agents should use these discussion tools.
 
@@ -72,7 +73,13 @@ Also provide:
 
 Stops the automatic discussion transcript for the current session.
 
-The discussion is first marked `closing`, the current assistant reply is captured, and then the file is marked `closed`.
+This tool performs the full close flow synchronously:
+
+- marks the runtime transcript as summarizing
+- invokes `business_analyst` with a blocking prompt to write the structured summary to `tasks/discussions/`
+- verifies the summary file was written successfully
+- archives the raw runtime transcript
+- returns the final closed result from the tool call itself
 
 ## `nomadflow_run_workflow`
 

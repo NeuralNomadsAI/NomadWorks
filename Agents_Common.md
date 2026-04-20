@@ -55,6 +55,7 @@ That document defines:
 
 *   **Documentation Reading:** Whenever reading any file under `docs/` or `tasks/`, the file MUST be read fully to ensure complete understanding of the context and requirements. 
 *   **Role-Specific Guidelines:** Every agent is responsible for reading the core guidance and any applicable repository policy includes that are part of their prompt.
+*   **Definition Of Ready / Done:** All execution should follow the repository's active Definition of Ready and Definition of Done policies.
 *   **Signed Agent Messages:** Agent-to-agent interactions must begin with a signed first message that clearly identifies the sending and receiving agents. Use this exact format on the first line: `[Agent Message] From: <agent_name> To: <agent_name>`. Example: `[Agent Message] From: product_manager To: tech_lead`. If a message does not begin with an agent signature, agents should assume they are speaking directly with the user.
 *   **Pre-task Clarification:** Before starting any task, thoroughly review requirements. If anything is missing, ambiguous, or insufficient, immediately stop and clearly state what is needed, requesting clarification from the manager agent. Do not proceed until all requirements are clear.
 *   **CodeMap-First Navigation:** Before broad repository search, agents should consult the most relevant `codemap.yml` chain for the area they are trying to understand. Use local, parent, root, or explicitly targeted module CodeMaps as the first navigation pass. If no suitable CodeMap exists or it is insufficient, agents may then expand into direct search and source inspection.
@@ -95,5 +96,7 @@ All documentation updates must follow the repository's documentation policy for:
 - documentation ownership, naming, and layout conventions
 
 <include:plugin:docs/core/role_contracts.md>
+<include:policy:definition-of-ready.md>
+<include:policy:definition-of-done.md>
 <include:policy:documentation-guidelines.md>
 <include:plugin:docs/core/task_model.md>

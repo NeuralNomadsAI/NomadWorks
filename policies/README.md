@@ -25,6 +25,14 @@ Files under `.nomadworks/generated/policies/` are reference copies only. They ar
   - Documentation layout, naming, ownership, and update expectations.
   - Used by all agents through the shared prompt.
 
+- `definition-of-ready.md`
+  - Canonical readiness criteria before execution begins.
+  - Used by all agents through the shared prompt and reflected in task templates.
+
+- `definition-of-done.md`
+  - Canonical completion criteria before closure.
+  - Used by all agents through the shared prompt and reflected in task templates.
+
 - `git-commit-messaging.md`
   - Commit subject and body rules.
   - Used by: `tech_lead`, `workflow_runner`

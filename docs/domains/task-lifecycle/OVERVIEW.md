@@ -13,6 +13,7 @@ This domain includes:
 - task classification by `tiny`, `standard`, and `complex`
 - task routing by `implementation`, `investigation`, and `spec`
 - slice-based task planning using `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, and `docs`
+- definition-of-ready and definition-of-done expectations for task execution
 - pre-sync quorum rules
 - task execution flow and handoff expectations
 - verification and archiving expectations
@@ -61,6 +62,8 @@ This domain does not include:
 
 - `docs/core/task_model.md`
 - `docs/core/agent_orchestration.md`
+- `.nomadworks/policies/definition-of-ready.md`
+- `.nomadworks/policies/definition-of-done.md`
 - `tasks/task-template.md`
 - `tasks/subtask-template.md`
 - `docs/core/documentation_structure.md`

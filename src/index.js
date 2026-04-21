@@ -930,7 +930,24 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
-        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, repo policy/agent folders, registries, and codemap.yml created.`;
+        const initSummary = `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, repo policy/agent folders, registries, and codemap.yml created.`;
+
+        // Ensure OpenCode reloads config/agents after scaffolding changes.
+        // Not all environments expose this API, so treat it as best-effort.
+        const client = input.client;
+        if (client?.instance?.dispose) {
+          try {
+            const disposeRes = await client.instance.dispose({ query: { directory: context.worktree } });
+            if (disposeRes?.data === true) {
+              return `${initSummary}\n\nOpenCode instance disposed so the new config can be loaded.`;
+            }
+            return `${initSummary}\n\nWarning: instance.dispose did not report success. You may need to restart OpenCode to load the new config.`;
+          } catch (e) {
+            return `${initSummary}\n\nWarning: Failed to dispose OpenCode instance (${e?.message || "unknown error"}). You may need to restart OpenCode to load the new config.`;
+          }
+        }
+
+        return `${initSummary}\n\nNote: OpenCode instance dispose API unavailable in this environment. Restart OpenCode to load the new config.`;
       }
     }),
     nomadworks_validate: tool({

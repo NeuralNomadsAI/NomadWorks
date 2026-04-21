@@ -31,6 +31,7 @@ Initializes NomadWorks in the current repository.
 - Generated prompt dumps go to `.nomadworks/generated/agents/` when `features.debug_dumps` is enabled.
 - Generated reference policy files go to `.nomadworks/generated/policies/` when `policies.extract_defaults` is set to `all`.
 - The scaffolded README files in `.nomadworks/agents/` and `.nomadworks/agent-additions/` list common `plugin:` and `policy:` includes that custom agents can reuse.
+- After a successful init, NomadWorks will request the OpenCode instance be disposed so the new config/agents can be reloaded.
 
 ## `nomadworks_validate`
 

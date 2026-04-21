@@ -938,11 +938,16 @@ export default async function NomadWorksPlugin(input) {
       args: {},
       async execute(args, context) {
         const res = await nomadworks_validate_logic(context.worktree);
-        if (res.ok) {
-          return `PASS: All source directories indexed. Hierarchy validated.\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
-        } else {
-          return `FAIL: Validation errors found:\n${res.errors.map(e => "- " + e).join("\n")}\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
+
+        // Defensive: older plugin builds or custom forks may not return `warnings`.
+        const warnings = Array.isArray(res?.warnings) ? res.warnings : [];
+        const errors = Array.isArray(res?.errors) ? res.errors : [];
+
+        if (res?.ok) {
+          return `PASS: All source directories indexed. Hierarchy validated.\nWarnings: ${warnings.length}\n${warnings.map(w => "- " + w).join("\n")}`;
         }
+
+        return `FAIL: Validation errors found:\n${errors.map(e => "- " + e).join("\n")}\nWarnings: ${warnings.length}\n${warnings.map(w => "- " + w).join("\n")}`;
       }
     }),
     nomadworks_start_discussion: tool({

@@ -111,3 +111,7 @@ Create `.nomadworks/agents/<agent>.md` to:
 - Repository-local policy overrides can live in `.nomadworks/policies/`.
 - Generated reference policy files are written to `.nomadworks/generated/policies/` when `policies.extract_defaults` is set to `all`.
 - Final agent prompts are dumped to `.nomadworks/generated/agents/` when `features.debug_dumps` is enabled.
+
+## Feature flags
+
+- `features.keep_builtin_agents`: when `true`, NomadWorks will not disable OpenCode built-in agents (`build`, `plan`, `general`, `explore`). NomadWorks will still set `product_manager` as the default agent.

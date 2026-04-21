@@ -1402,6 +1402,11 @@ ${YAML.stringify(dumpConfig).trim()}
 
       const builtInAgents = ["build", "plan", "general", "explore"];
       const allToDisable = new Set([...builtInAgents, ...Object.keys(cfg.agent)]);
+
+      // Some users want to keep OpenCode built-in agents available alongside NomadWorks.
+      if (repoCfg.features?.keep_builtin_agents === true) {
+        for (const id of builtInAgents) allToDisable.delete(id);
+      }
       
       for (const id of allToDisable) {
         if (!ourAgents[id]) {

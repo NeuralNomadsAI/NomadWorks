@@ -1173,7 +1173,7 @@ export default async function NomadWorksPlugin(input) {
           ].filter(Boolean).join("\n");
 
           const lifecycleInstruction = workflowTrack === "implementation"
-            ? "Please execute the full lifecycle (Sync -> Implementation -> Commit -> Archive) and provide a final summary."
+            ? "Please execute the full lifecycle (Sync -> Delegate Implementation -> Delegate Verification -> Post-Task Sync -> Commit -> Archive). Delegate implementation/QA to specialists by default. If you hit a hard blocker, stop and END your run with a final summary that starts with 'HARD BLOCKER:' so the plugin can relay it back to PMA. Provide a final summary."
             : workflowTrack === "spec"
               ? "Please execute the full spec lifecycle for this task, update the required documentation artifacts, and provide a final summary."
               : "Please execute the investigation lifecycle for this task, capture findings clearly, and provide a final summary.";

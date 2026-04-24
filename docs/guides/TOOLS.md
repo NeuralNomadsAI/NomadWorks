@@ -97,6 +97,8 @@ Starts a `workflow_runner` session for a complex task.
 - Used for `complex` implementation tasks.
 - The runner executes in a separate session and reports completion back to PMA.
 - The runner is expected to orchestrate the lifecycle by delegating implementation and verification work to specialists, driving the task to delivery or a hard blocker.
+- For implementation tasks, the runner must create or append a Workflow Execution Plan in the task file after Pre-Task Sync and before implementation starts.
+- The runner must not directly edit product source code, tests, application configuration, or implementation files unless PMA explicitly authorizes that exception in the workflow instructions.
 - When a hard blocker is reached, the runner should end its run and return a final summary starting with `HARD BLOCKER:` so the plugin relays it back to the PMA session.
 
 ## `nomadflow_prompt_workflow`

@@ -24,7 +24,7 @@ reopened_count: 0
 [Short description of the intended outcome and scope.]
 
 ## Ownership
-- **Assigned To:** `[product_manager | business_analyst | tech_lead | technical_architect | developer | qa_engineer | ui_ux_designer | workflow_runner]`
+- **Assigned To:** `[product_manager | business_analyst | tech_lead | technical_architect | developer | qa_engineer | ui_ux_designer]`
 - **Handoff From:** `[agent_name or null]`
 
 ## Definition Of Ready Check
@@ -87,7 +87,7 @@ Use this section when a task that was thought to be done must be resumed using t
 - **Reason:** [What discrepancy, incomplete work, or minor same-scope change was found]
 - **Resume Path:** [How the task returns to Active and which agent owns the next step]
 - **Task Tool Resume:** [Reuse the same Task tool `task_id` if applicable, otherwise write `Not applicable`]
-- **Workflow Session Resume:** [Reuse the same Workflow Runner `session_id` if applicable, otherwise write `Not applicable`]
+- **Workflow Session Resume:** [Reuse the same delegated PMA workflow `session_id` if applicable, otherwise write `Not applicable`]
 
 ### Pre Sync
 * **PMA Facilitator:** The Product Manager always runs the sync and records the decision.
@@ -148,7 +148,7 @@ Use this section when a task that was thought to be done must be resumed using t
 - If a completed task needs discrepancies fixed or minor same-scope changes after implementation, move the same task back into `Active` rather than creating a new task for the same unfinished scope.
 - Keep the same task file ID.
 - Reuse the same Task tool `task_id` when resuming delegated task work, when possible.
-- Reuse the same Workflow Runner `session_id` when resuming a Workflow Runner task, when possible.
+- Reuse the same delegated PMA workflow `session_id` when resuming a delegated workflow task, when possible.
 
 # Reviews
 ## Technical Architect:

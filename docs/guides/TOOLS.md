@@ -84,33 +84,33 @@ This tool performs the full close flow synchronously:
 
 ## `nomadflow_run_workflow`
 
-Starts a `workflow_runner` session for a complex task.
+Starts a delegated `product_manager` workflow session for a complex task.
 
 ### Arguments
 
 - `task_path`: path to the task markdown file
-- `instructions`: detailed instructions for the workflow runner
+- `instructions`: detailed instructions for the delegated PMA workflow session
 
 ### Notes
 
 - Only available in `full` team mode.
 - Used for `complex` implementation tasks.
-- The runner executes in a separate session and reports completion back to PMA.
-- The runner is expected to orchestrate the lifecycle by delegating implementation and verification work to specialists, driving the task to delivery or a hard blocker.
-- For implementation tasks, the runner must create or append a Workflow Execution Plan in the task file after Pre-Task Sync and before implementation starts.
-- The runner must not directly edit product source code, tests, application configuration, or implementation files unless PMA explicitly authorizes that exception in the workflow instructions.
-- When a hard blocker is reached, the runner should end its run and return a final summary starting with `HARD BLOCKER:` so the plugin relays it back to the PMA session.
+- The delegated PMA executes in a separate session and reports completion back to the originating PMA session.
+- The delegated PMA is expected to orchestrate the lifecycle by delegating implementation and verification work to specialists, driving the task to delivery or a hard blocker.
+- For implementation tasks, the delegated PMA must create or append a Workflow Execution Plan in the task file after Pre-Task Sync and before implementation starts.
+- The delegated PMA must not directly edit product source code, tests, application configuration, or implementation files.
+- When a hard blocker is reached, the delegated PMA should end its run and return a final summary starting with `HARD BLOCKER:` so the plugin relays it back to the originating PMA session.
 
 ## `nomadflow_prompt_workflow`
 
-Sends a follow-up prompt to an existing `workflow_runner` session.
+Sends a follow-up prompt to an existing delegated PMA workflow session.
 
 ### Arguments
 
-- `session_id`: workflow runner session ID
+- `session_id`: delegated PMA workflow session ID
 - `text`: follow-up message for that session
 
 ### Notes
 
 - Only available in `full` team mode.
-- Useful for bounce-backs, clarifications, and resumed runner work.
+- Useful for bounce-backs, clarifications, and resumed delegated workflow work.

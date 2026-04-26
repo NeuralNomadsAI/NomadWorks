@@ -16,7 +16,7 @@ Mini team mode is the lightest supported NomadWorks operating model.
 Not supported:
 
 - `complex`
-- `workflow_runner`
+- delegated PMA workflow sessions
 
 ## Mini Team Task Flow
 
@@ -38,4 +38,4 @@ User request
 
 ## Escalation Rule
 
-If the task clearly needs architecture decomposition, Workflow Runner orchestration, or broader specialist support, PMA should stop and ask to switch the repository to `full` team mode or rescope the work.
+If the task clearly needs architecture decomposition, delegated PMA workflow orchestration, or broader specialist support, PMA should stop and ask to switch the repository to `full` team mode or rescope the work.

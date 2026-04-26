@@ -8,4 +8,4 @@ You are operating in **mini team mode**.
 - You are responsible for making technical progress without assuming that Architect, Developer, or QA are available as separate agents.
 - Treat product-truth updates as BA-owned, but flag PMA if technical changes require corresponding technical documentation updates.
 - If UI-facing work lacks dedicated UI/UX review, call out the reduced-review risk explicitly.
-- If the task clearly requires deeper architecture support, Workflow Runner orchestration, or broader specialist coverage, tell PMA to switch the repository to `full` team mode or rescope the task.
+- If the task clearly requires deeper architecture support, delegated PMA workflow orchestration, or broader specialist coverage, tell PMA to switch the repository to `full` team mode or rescope the task.

@@ -6,7 +6,7 @@ NomadWorks uses three task complexity levels and three work tracks.
 
 - `tiny`: Minimal, low-risk work.
 - `standard`: Default bounded delivery work.
-- `complex`: Multi-step work that uses decomposition and the Workflow Runner.
+- `complex`: Multi-step work that uses decomposition and delegated PMA workflow orchestration.
 
 ## Track
 
@@ -41,7 +41,7 @@ NomadWorks uses three task complexity levels and three work tracks.
 ## Team modes
 
 - `mini`: supports `tiny` and `standard` only, using `product_manager`, `business_analyst`, and `tech_lead`
-- `full`: supports `tiny`, `standard`, and `complex`, including `workflow_runner`
+- `full`: supports `tiny`, `standard`, and `complex`, including delegated PMA workflow sessions
 
 See also:
 
@@ -85,7 +85,7 @@ Track these task files under `Active Discussions` in `tasks/current.md` until th
 - Move it back into `Active` in `tasks/current.md`.
 - Keep the same task file ID and record the reason in `Reopen History`.
 - Reuse the same Task tool `task_id` for delegated task work when possible.
-- If the task used `workflow_runner`, reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible.
+- If the task used a delegated PMA workflow session, reuse both the same Task tool `task_id` and the same workflow `session_id` when possible.
 
 ## Evidence By Track
 

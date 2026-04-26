@@ -12,8 +12,8 @@ This document maps the major product domains and the features that belong to the
 
 ### Agent Orchestration
 
-- **Purpose:** Defines how PMA, Workflow Runner, and specialist agents collaborate.
-- **Owned Features:** Product Manager routing, Workflow Runner handoff, specialist delegation, discussion protocols.
+- **Purpose:** Defines how PMA and specialist agents collaborate.
+- **Owned Features:** Product Manager routing, delegated PMA workflow sessions, specialist delegation, discussion protocols.
 - **Primary Docs:** `docs/guides/AGENTS.md`, `docs/core/agent_orchestration.md`
 
 ### Task Lifecycle

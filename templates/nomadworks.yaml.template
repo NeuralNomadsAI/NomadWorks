@@ -11,7 +11,7 @@ defaults:
 features:
   debug_dumps: true # Dumps final agent configs to .nomadworks/generated/agents/ for verification
   # debug_logs: false # Enable detailed console logging for the plugin
-  # keep_builtin_agents: false # If true, do not disable OpenCode built-in agents (build/plan/general/explore)
+  # keep_builtin_agents: false # If true, do not disable agents OpenCode already registered, including built-ins
   codemap_verification: true
 
 policies:

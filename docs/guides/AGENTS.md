@@ -6,8 +6,7 @@ The collective is designed so each agent represents a professional function insi
 
 ## Primary orchestration agents
 
-- `product_manager`: The default primary agent. Routes work by complexity, delegates specialists, and decides when to use the Workflow Runner.
-- `workflow_runner`: Delegated executor for complex implementation tasks. Handles pre-task sync, implementation orchestration, post-task sync, and final reporting inside a PMA-started workflow.
+- `product_manager`: The default primary agent. Routes work by complexity, delegates specialists, and may start delegated PMA workflow sessions for complex work.
 
 ## Specialist agents
 
@@ -60,4 +59,4 @@ Use shared policies and additive agent files by default. Use full agent definiti
 
 - PMA links the task to an approved SCR.
 - Architect helps decompose the work into slice-based subtasks.
-- `workflow_runner` executes the end-to-end delivery cycle.
+- PMA may start a delegated PMA workflow session to execute the end-to-end delivery cycle while the originating PMA waits for completion notification.

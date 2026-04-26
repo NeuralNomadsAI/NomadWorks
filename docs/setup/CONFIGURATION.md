@@ -41,12 +41,12 @@ agents:
 
 - Enabled by default: `product_manager`, `business_analyst`, `tech_lead`
 - Intended for: `tiny` and `standard` tasks in simple repositories
-- Not supported: `complex` work and `workflow_runner`
+- Not supported: `complex` delegated workflows
 
 ### `full`
 
 - Enables the full NomadWorks Collective by default
-- Intended for: repositories that need the complete role set, including `workflow_runner`
+- Intended for: repositories that need the complete specialist role set and delegated PMA workflows
 - Supports: `tiny`, `standard`, and `complex`
 
 ## Common uses
@@ -78,7 +78,7 @@ Mandatory agents cannot be disabled:
 
 ```yaml
 agents:
-  workflow_runner:
+  developer:
     tools_add:
       - nomadworks_validate
 ```
@@ -114,4 +114,4 @@ Create `.nomadworks/agents/<agent>.md` to:
 
 ## Feature flags
 
-- `features.keep_builtin_agents`: when `true`, NomadWorks will not disable OpenCode built-in agents (`build`, `plan`, `general`, `explore`). NomadWorks will still set `product_manager` as the default agent.
+- `features.keep_builtin_agents`: when `true`, NomadWorks will not disable agents that OpenCode already registered, including built-in agents such as `build`, `plan`, `general`, and `explore`. NomadWorks will still set `product_manager` as the default agent.

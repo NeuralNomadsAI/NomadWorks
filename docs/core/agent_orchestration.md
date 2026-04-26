@@ -18,7 +18,7 @@ The **Product Manager Agent (PMA)** is the sole orchestrator. Subagents (Archite
 - The canonical task-routing definitions live in `docs/core/task_model.md`.
 - `tiny` work stays lightweight and direct.
 - `standard` work stays bounded and uses the normal delivery path.
-- `complex` implementation work uses slice-based decomposition and `workflow_runner`.
+- `complex` implementation work uses slice-based decomposition and delegated PMA workflow sessions.
 - PMA always facilitates pre-sync, while the required specialist quorum follows the defaults in `docs/core/task_model.md`.
 
 ### 3. Operational Flow (Two-Phase Execution)
@@ -47,7 +47,7 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and a **De
 - If a task that was believed to be done later needs discrepancies fixed or minor same-scope changes, PMA should move that same task back into `Active` instead of creating a brand new task.
 - The task keeps the same task file ID and records the discrepancy in `Reopen History`.
 - When PMA resumes delegated task work, it should reuse the same Task tool `task_id` when possible.
-- If the task previously ran through `workflow_runner`, PMA should reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible so the prior context is preserved.
+- If the task previously ran through a delegated PMA workflow session, PMA should reuse both the same Task tool `task_id` and the same workflow `session_id` when possible so the prior context is preserved.
 - Create a new task only when the new work is truly follow-up scope rather than unfinished original scope.
 
 ### 3.1 Limited Parallelism (Shared Worktree)
@@ -59,7 +59,7 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and a **De
 - **Clarification/Questions:** Any need for clarification or questions from an agent is directed to the PMA. The PMA then facilitates the inquiry and relays the response.
 - **Dependency Management:** The PMA actively tracks and manages all task dependencies.
 - **Review & Feedback:** The PMA assigns review and verification work to the appropriate technical specialists, with Tech Lead remaining the default technical review authority.
-- **Commit Authority:** Tech Lead is the default commit authority for direct execution paths. Workflow Runner may perform the final commit only in delegated full-team complex workflows, while PMA remains the final closure authority.
+- **Commit Authority:** Tech Lead is the default commit authority for direct execution paths. A delegated PMA workflow session may perform the final commit only in delegated full-team complex workflows, while the originating PMA remains the final closure authority.
 - **Escalation:** Any persistent blockers or disagreements are escalated directly to the PMA.
 - **Orchestrated Discussion Workflow:** The PMA may create a new `Task`, reuse the resulting `session_id`, gather specialist input, and synthesize the final decision.
 - **Documentation as the Single Source of Truth:** All agents refer to project documentation in `docs/` as the primary authority, and the PMA ensures it stays current.

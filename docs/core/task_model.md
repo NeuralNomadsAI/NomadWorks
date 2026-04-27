@@ -6,7 +6,7 @@ NomadWorks classifies work across three orthogonal dimensions.
 
 - `tiny`: Very small, low-risk work such as copy edits, typos, trivial config fixes, or narrowly scoped non-behavioral changes.
 - `standard`: The default delivery path for bounded bug fixes, focused features, and moderate documentation or QA work.
-- `complex`: Multi-step work that benefits from decomposition, multiple specialist handoffs, and delegated PMA workflow orchestration.
+- `complex`: Multi-step work that benefits from decomposition, multiple specialist handoffs, and full Workflow Runner orchestration.
 
 ## 2. Track
 
@@ -29,7 +29,7 @@ NomadWorks classifies work across three orthogonal dimensions.
 - `tiny` tasks should stay within one slice and usually one specialist handoff.
 - `standard` tasks should keep one primary slice even if they touch adjacent areas.
 - `complex` tasks should be decomposed into slice-based subtasks.
-- `complex + implementation` is the default case for using `nomadflow_run_workflow` to start a delegated PMA workflow session.
+- `complex + implementation` is the default case for using `workflow_runner`.
 - While one implementation task is active in the shared worktree, parallel work should be limited to `investigation` or `spec` tasks that avoid conflicting edits.
 
 ## Pre-Sync Specialist Defaults

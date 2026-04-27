@@ -13,19 +13,19 @@ This document defines the workflow verbs and handoff output contract used across
 
 - **Product Manager Agent (PMA):** Owns workflow closure in all modes. PMA decides whether evidence, documentation, and registry state are sufficient for final closure.
 - **Tech Lead:** Default commit authority for direct execution paths and mini-team work.
-- **Delegated PMA workflow session:** Delegated commit authority only for full-team complex workflows that the originating PMA explicitly starts.
+- **Workflow Runner:** Delegated commit authority only for full-team complex workflow-runner paths that PMA explicitly starts.
 - **Task Archiving:** Archive and registry updates are part of finalization and must be included in the final committed state.
 
 ## Documentation Responsibility Model
 
 - **Business Analyst:** Owns product truth and product-facing feature documentation.
 - **Technical Architect:** Owns architecture truth and technical design documentation.
-- **Tech Lead / Developer / delegated PMA workflow session:** May update code-adjacent documentation during execution.
+- **Tech Lead / Developer / Workflow Runner:** May update code-adjacent documentation during execution.
 - **PMA:** Verifies documentation closure and decides whether documentation impact has been fully resolved for the task.
 
 ## Specialist Output Contract
 
-When handing work back to PMA, specialists should return these sections in a concise format:
+When handing work back to PMA or Workflow Runner, specialists should return these sections in a concise format:
 
 - **Summary:** What was done or decided.
 - **Work Performed:** Files changed, reviewed, or key areas analyzed.

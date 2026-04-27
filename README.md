@@ -48,7 +48,7 @@ Runtime prompt resolution prefers repository-local policies, agent definitions, 
 NomadWorks supports two team presets:
 
 - `mini`: PMA + BA + Tech Lead for simple repositories and `tiny` / `standard` tasks
-- `full`: the complete collective, including advanced specialists for architecture, development, QA, and UI/UX
+- `full`: the complete collective, including advanced specialists and `workflow_runner`
 
 If `team_mode` is not set in an existing repository, NomadWorks treats it as `full` by default.
 
@@ -79,13 +79,14 @@ For the full release setup, required secrets, and branch-based versioning behavi
 | Team Mode | Available Agents | Supported Task Complexity | Flow Guide |
 | :--- | :--- | :--- | :--- |
 | `mini` | `product_manager`, `business_analyst`, `tech_lead` | `tiny`, `standard` | [Mini Team Mode](docs/guides/TEAM_MODE_MINI.md) |
-| `full` | Full NomadWorks Collective, including `technical_architect`, `developer`, `qa_engineer`, and `ui_ux_designer` | `tiny`, `standard`, `complex` | [Full Team Mode](docs/guides/TEAM_MODE_FULL.md) |
+| `full` | Full NomadWorks Collective, including `workflow_runner`, `technical_architect`, `developer`, `qa_engineer`, and `ui_ux_designer` | `tiny`, `standard`, `complex` | [Full Team Mode](docs/guides/TEAM_MODE_FULL.md) |
 
 ## Workflow Agents
 
 The NomadWorks Collective operates like a role-based software development team:
 
 - `product_manager` (Product Manager Agent, PMA): Default orchestrator and routing agent.
+- `workflow_runner` (Workflow Runner): Delegated orchestrator for complex implementation tasks.
 - `business_analyst` (Business Analyst, BA): Requirements and product-truth steward.
 - `technical_architect` (Technical Architect): Architecture, interfaces, and impact mapping.
 - `tech_lead` (Tech Lead): Behavioral verification and technical sign-off.
@@ -114,7 +115,7 @@ For arguments, behavior, and team-mode availability, see [Plugin Tools](docs/gui
 - **Track:** `implementation`, `investigation`, `spec`
 - **Slice:** `foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`
 
-Use `complex` for work that needs an approved SCR, slice-based decomposition, and delegated PMA workflow orchestration. Keep `tiny` and `standard` tasks direct and bounded.
+Use `complex` for work that needs an approved SCR, slice-based decomposition, and `workflow_runner`. Keep `tiny` and `standard` tasks direct and bounded.
 
 ## Discussion Handoffs
 

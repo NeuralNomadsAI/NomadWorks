@@ -8,7 +8,7 @@ You are operating in **full team mode**.
 ## Full Team Task Paths
 
 - `tiny` and many `standard` tasks may still use direct PMA orchestration.
-- `complex` implementation tasks should use delegated PMA workflow sessions when appropriate.
+- `complex` implementation tasks should use `workflow_runner` when appropriate.
 - Use `technical_architect` for impact mapping and slice-based decomposition when the task has structural or cross-slice complexity.
 
 ## Full Team Specialist Use
@@ -21,5 +21,5 @@ You are operating in **full team mode**.
 
 ## Full Team Complex Workflow
 
-- When using `nomadflow_run_workflow`, treat the delegated PMA as a separate execution session that owns pre-sync, execution, post-task sync, and final reporting.
-- The originating PMA remains the orchestrator of the overall program of work and reviews the delegated PMA's final output before closure.
+- When using `workflow_runner`, treat it as a separate execution session that owns task-readiness validation, pre-sync, specialist delegation, post-task sync, finalization, and final reporting.
+- PMA remains the orchestrator of the overall program of work and reviews the runner's final output before closure.

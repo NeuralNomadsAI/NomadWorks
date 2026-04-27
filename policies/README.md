@@ -15,11 +15,11 @@ Files under `.nomadworks/generated/policies/` are reference copies only. They ar
 
 - `development-guidelines.md`
   - Repository-specific engineering rules, stack notes, and implementation conventions.
-  - Used by: `developer`, `technical_architect`, `tech_lead`, delegated PMA workflows
+  - Used by: `developer`, `technical_architect`, `tech_lead`, `workflow_runner`
 
 - `testing-guidelines.md`
   - Testing, evidence, regression, and verification conventions.
-  - Used by: `developer`, `qa_engineer`, `tech_lead`, delegated PMA workflows
+  - Used by: `developer`, `qa_engineer`, `tech_lead`, `workflow_runner`
 
 - `documentation-guidelines.md`
   - Documentation layout, naming, ownership, and update expectations.
@@ -35,7 +35,7 @@ Files under `.nomadworks/generated/policies/` are reference copies only. They ar
 
 - `git-commit-messaging.md`
   - Commit subject and body rules.
-  - Used by: `tech_lead`, delegated PMA workflows
+  - Used by: `tech_lead`, `workflow_runner`
 
 - `product-guidelines.md`
   - User story, acceptance criteria, terminology, and product-truth conventions.

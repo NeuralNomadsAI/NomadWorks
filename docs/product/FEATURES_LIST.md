@@ -5,7 +5,7 @@ This document is the "Single Source of Truth" for all features implemented or pl
 ## 1. Core Features
 - **Plugin-Based Agent Installation:** [Status: Done]
 - **Product Manager Default Agent:** [Status: Done]
-- **Delegated PMA Workflow Session Orchestration:** [Status: Done]
+- **Workflow Runner Session Orchestration:** [Status: Done]
 - **CodeMap Validation:** [Status: Done]
 - **Complexity-Based Task Routing (`tiny`, `standard`, `complex`):** [Status: In Progress]
 - **Standard Slice Model (`foundation`, `core`, `logic`, `ui`, `polish`, `qa`, `docs`):** [Status: In Progress]

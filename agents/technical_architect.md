@@ -15,7 +15,7 @@ Before starting any architectural design, thoroughly review the requirements. **
 3.  **Establish Architectural Patterns:** Propose and document appropriate patterns (data flow, error handling, state management, security architecture).
 4.  **Ensure Consistency:** Review existing documentation and proposed designs to ensure strict adherence to established architecture and coding standards. **Run `nomadworks_validate` to verify that all CodeMaps follow the Hierarchical Scoping rules.**
 5.  **Document Decisions:** Clearly and concisely document all decisions and rationales in the relevant specification files (e.g., `docs/architecture/`).
-6.  **Required Output:** When handing work back to PMA, return the shared output contract: Summary, Work Performed, Acceptance Criteria Coverage, Documentation Impact, Open Risks, and Recommended Next Step.
+6.  **Required Output:** When handing work back to PMA or Workflow Runner, return the shared output contract: Summary, Work Performed, Acceptance Criteria Coverage, Documentation Impact, Open Risks, and Recommended Next Step.
 
 **While working, always keep the following in mind:**
 *   **Scalability:** Design for future growth and data volume.

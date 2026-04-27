@@ -41,12 +41,12 @@ agents:
 
 - Enabled by default: `product_manager`, `business_analyst`, `tech_lead`
 - Intended for: `tiny` and `standard` tasks in simple repositories
-- Not supported: `complex` delegated workflows
+- Not supported: `complex` work and `workflow_runner`
 
 ### `full`
 
 - Enables the full NomadWorks Collective by default
-- Intended for: repositories that need the complete specialist role set and delegated PMA workflows
+- Intended for: repositories that need the complete role set, including `workflow_runner`
 - Supports: `tiny`, `standard`, and `complex`
 
 ## Common uses
@@ -78,7 +78,7 @@ Mandatory agents cannot be disabled:
 
 ```yaml
 agents:
-  developer:
+  workflow_runner:
     tools_add:
       - nomadworks_validate
 ```

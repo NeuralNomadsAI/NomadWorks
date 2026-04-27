@@ -38,7 +38,7 @@ Refer to `docs/core/agent_orchestration.md` for the full strategy. Key highlight
 *   **Delegated Execution Phase:** Once an SCR is triggered for implementation, the NomadWorks Collective executes the entire cycle (Task -> Dev -> QA -> Review -> Commit) within PMA-delegated task lifecycles.
 *   **Source of Truth:** SCR files track the *proposals*, Documentation tracks the *state*, and Tasks track the *work*.
 *   **Verification:** 100% test pass rate and internal sign-offs are required before delegated workflow closure.
-*   **Complexity Routing:** Use `tiny` for low-risk, single-slice work; `standard` for bounded delivery tasks; and `complex` for multi-step work that requires decomposition and delegated PMA workflow orchestration.
+*   **Complexity Routing:** Use `tiny` for low-risk, single-slice work; `standard` for bounded delivery tasks; and `complex` for multi-step work that requires decomposition and the Workflow Runner.
 *   **Limited Parallelism:** Until dedicated git worktree support lands, at most one shared-worktree implementation task may be active at a time. Investigation and spec work may proceed in parallel when they do not interfere with the active implementation task.
 
 ## 4.1 Task Model
@@ -78,9 +78,9 @@ That document defines:
 *   **Task Lifecycle:** PMA reviews -> Updates task file -> Assigns next agent.
 *   **Discussion Tasks:** When a discussion between PMA, BA, and Tech Lead becomes workflow-relevant, it should be captured in a normal task file, assigned to the next responsible agent, and tracked under `Active Discussions` in `tasks/current.md` until it resolves into execution, SCR work, clarification, or closure.
 *   **Task Reopening:** If a task that was thought to be complete later needs unresolved discrepancies fixed or minor same-scope changes after implementation, reuse the same task file, move it back into `Active`, and record the reason in the task's `Reopen History` rather than creating a brand new task.
-*   **Resume Continuity:** When resuming a reopened task, keep the same task file ID. Reuse the same Task tool `task_id` for delegated task work when possible, and for delegated PMA workflow execution reuse both the same Task tool `task_id` and the same workflow `session_id` when possible, so prior context remains available.
+*   **Resume Continuity:** When resuming a reopened task, keep the same task file ID. Reuse the same Task tool `task_id` for delegated task work when possible, and for Workflow Runner execution reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible, so prior context remains available.
 *   **Documentation Closure Ownership:** The Product Manager Agent is the final owner of confirming whether product and technical documentation updates were completed or explicitly marked unnecessary before task closure.
-*   **Git Strategy:** PMA remains the final workflow-closure authority. Tech Lead is the default commit authority for direct execution paths, and a delegated PMA workflow session may perform the delegated final commit only in explicit full-team complex workflows.
+*   **Git Strategy:** PMA remains the final workflow-closure authority. Tech Lead is the default commit authority for direct execution paths, and Workflow Runner may perform the delegated final commit only in explicit full-team complex workflows.
 *   **Authority Matrix:** Follow the canonical authority and output rules in `docs/core/role_contracts.md` for ownership, verification, commit authority, and closure decisions.
 *   **Commit Message Policy:** Every commit message must follow the repository's active commit messaging policy.
 *   **Implementation Evidence Collection:** Every `implementation` task must produce the verification artifacts required by the repository's testing and evidence policy.

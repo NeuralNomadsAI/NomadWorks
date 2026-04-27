@@ -5,6 +5,7 @@ Full team mode enables the complete NomadWorks Collective.
 ## Available Agents
 
 - `product_manager` (PMA)
+- `workflow_runner`
 - `business_analyst` (BA)
 - `technical_architect`
 - `tech_lead`
@@ -25,10 +26,10 @@ User request
   -> PMA classifies task and track
   -> BA + Tech Lead refine or review specification
   -> For standard work, PMA orchestrates specialist handoffs directly
-  -> For complex work, PMA starts a delegated PMA workflow session
+  -> For complex work, PMA starts Workflow Runner in a separate session
   -> Architect decomposes structural work into slices when needed
   -> Developer / QA / UI-UX contribute by specialty
-  -> Delegated PMA workflow or originating PMA returns evidence and completion state
+  -> Workflow Runner or PMA returns evidence and completion state
   -> PMA checks documentation closure
   -> Commit and archive
 ```
@@ -36,7 +37,7 @@ User request
 ## Full Team Responsibilities
 
 - **PMA:** orchestration, routing, final closure
-- **Delegated PMA workflow:** separate-session execution for complex workflows
+- **Workflow Runner:** separate-session orchestration for complex workflows
 - **BA:** product truth and acceptance criteria
 - **Technical Architect:** architecture and decomposition
 - **Tech Lead:** technical leadership and behavioral verification

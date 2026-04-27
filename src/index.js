@@ -809,16 +809,16 @@ export default async function NomadWorksPlugin(input) {
 
     try {
       // Blocking prompt call in a background promise
-      if (debug) console.log(`[NomadFlow] Sending initial/resumed prompt to delegated PMA session ${sessionId}...`);
+      if (debug) console.log(`[NomadFlow] Sending initial/resumed prompt to Workflow Runner session ${sessionId}...`);
       const runResult = await client.session.prompt({
         path: { id: sessionId },
         body: {
-          agent: "product_manager",
+          agent: "workflow_runner",
           parts: [{ type: "text", text: initialText }]
         }
       });
 
-      if (debug) console.log(`[NomadFlow] Delegated PMA session ${sessionId} returned control.`);
+      if (debug) console.log(`[NomadFlow] Workflow Runner session ${sessionId} returned control.`);
 
       // Capture final message and notify PMA
       const finalMessage = runResult.data.parts.map(p => p.text).join("\n");
@@ -829,7 +829,7 @@ export default async function NomadWorksPlugin(input) {
         body: {
           parts: [{ 
             type: "text", 
-            text: `[NomadFlow Notification] Delegated PMA workflow has finished work for: ${identifier}.\n\nFINAL SUMMARY FROM DELEGATED PMA:\n${finalMessage}` 
+            text: `[NomadFlow Notification] Workflow Runner has finished work for: ${identifier}.\n\nFINAL SUMMARY FROM RUNNER:\n${finalMessage}` 
           }]
         }
       });
@@ -841,7 +841,7 @@ export default async function NomadWorksPlugin(input) {
         await client.session.promptAsync({
           path: { id: pmaSessionId },
           body: {
-            parts: [{ type: "text", text: `[NomadFlow Error] Delegated PMA workflow failed for ${identifier}: ${err.message}` }]
+            parts: [{ type: "text", text: `[NomadFlow Error] Workflow Runner failed for ${identifier}: ${err.message}` }]
           }
         });
       } catch (notifyErr) {
@@ -1131,17 +1131,17 @@ export default async function NomadWorksPlugin(input) {
       }
     }),
      nomadflow_run_workflow: tool({
-      description: "Start a delegated PMA workflow session for a complex task",
+      description: "Start a workflow_runner session for a complex task",
       args: {
         task_path: tool.schema.string().describe("Path to the task markdown file (e.g. tasks/todo/task_001.md)"),
-        instructions: tool.schema.string().describe("Detailed instructions for the delegated PMA workflow session")
+        instructions: tool.schema.string().describe("Detailed instructions for the workflow_runner")
       },
       async execute(args, context) {
         const client = input.client;
         if (!client) return "Error: OpenCode client not available in plugin context.";
 
-        if (operatingTeamMode !== "full") {
-          return "FAIL: Delegated PMA workflows are unavailable in mini team mode. Switch to full team mode to run complex workflows.";
+        if (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full") {
+          return "FAIL: Workflow Runner is unavailable in the current team configuration. Switch to full team mode to run complex workflows.";
         }
 
         const pmaSessionId = context.sessionId || context.sessionID;
@@ -1171,17 +1171,17 @@ export default async function NomadWorksPlugin(input) {
           ].filter(Boolean).join("\n");
 
           const lifecycleInstruction = workflowTrack === "implementation"
-            ? "You are a delegated PMA workflow session. Execute the full lifecycle (Sync -> Workflow Execution Plan -> Delegate Implementation -> Delegate Verification -> Post-Task Sync -> Commit -> Archive). After Pre-Task Sync, create or append a Workflow Execution Plan in the task file and assign each step to the responsible specialist. Do not implement code directly. If implementation is required, delegate it to developer. If verification is required, delegate it to qa_engineer and tech_lead. If you hit a hard blocker, stop and END your run with a final summary that starts with 'HARD BLOCKER:' so the plugin can relay it back to the originating PMA session. Provide a final summary."
+            ? "You are the Workflow Runner. Execute the full lifecycle (Task Readiness Check -> Pre-Task Sync -> Workflow Execution Plan -> Delegate Implementation -> Delegate Verification -> Post-Task Sync -> Commit -> Archive). Read the task file first and verify it has sufficient PMA-provided task management context before doing anything else. Do not implement code directly. If implementation is required, delegate it to developer. If verification is required, delegate it to qa_engineer and tech_lead. If you hit a hard blocker, stop and END your run with a final summary that starts with 'HARD BLOCKER:' so the plugin can relay it back to PMA. Provide a final summary."
             : workflowTrack === "spec"
-              ? "You are a delegated PMA workflow session. Execute the full spec lifecycle for this task, delegate specialist work as needed, update the required documentation artifacts, and provide a final summary."
-              : "You are a delegated PMA workflow session. Execute the investigation lifecycle for this task, delegate specialist work as needed, capture findings clearly, and provide a final summary.";
+              ? "You are the Workflow Runner. Execute the full spec lifecycle for this task, delegate specialist work as needed, update the required documentation artifacts, and provide a final summary."
+              : "You are the Workflow Runner. Execute the investigation lifecycle for this task, delegate specialist work as needed, capture findings clearly, and provide a final summary.";
 
           const initialText = `Task File: ${args.task_path}\n${metadataSummary ? `\n${metadataSummary}` : ""}\n\nInstructions: ${args.instructions}\n\n${lifecycleInstruction}`;
           
           // Start monitoring in background (async)
           startAndMonitorWorkflow(sessionId, pmaSessionId, initialText, args.task_path);
 
-          return `SUCCESS: Delegated PMA workflow session started. ID: ${sessionId}\nTrack: ${workflowTrack}\nInstructions sent for ${args.task_path}. You will be notified on completion in this session (${pmaSessionId}).`;
+          return `SUCCESS: Workflow Runner session started. ID: ${sessionId}\nTrack: ${workflowTrack}\nInstructions sent for ${args.task_path}. You will be notified on completion in this session (${pmaSessionId}).`;
         } catch (e) {
           console.error("[NomadFlow] Failed to start workflow session:", e);
           return `FAIL: Failed to initiate session: ${e.message}`;
@@ -1189,17 +1189,17 @@ export default async function NomadWorksPlugin(input) {
       }
     }),
     nomadflow_prompt_workflow: tool({
-      description: "Send a message or follow-up prompt to an existing delegated PMA workflow session",
+      description: "Send a message or follow-up prompt to an existing workflow_runner session",
       args: {
         session_id: tool.schema.string().describe("The ID of the session started by nomadflow_run_workflow"),
-        text: tool.schema.string().describe("The message or instruction to send to the delegated PMA workflow session")
+        text: tool.schema.string().describe("The message or instruction to send to the workflow_runner")
       },
       async execute(args, context) {
         const client = input.client;
         if (!client) return "Error: OpenCode client not available.";
 
-        if (operatingTeamMode !== "full") {
-          return "FAIL: Delegated PMA workflows are unavailable in mini team mode. Switch to full team mode to send workflow prompts.";
+        if (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full") {
+          return "FAIL: Workflow Runner is unavailable in the current team configuration. Switch to full team mode to send workflow runner prompts.";
         }
 
         const pmaSessionId = context.sessionId || context.sessionID;
@@ -1217,7 +1217,7 @@ export default async function NomadWorksPlugin(input) {
             return `SUCCESS: Session '${args.session_id}' was not tracked. Sent prompt and resumed monitoring. You will be notified on completion in this session (${pmaSessionId}).`;
           }
 
-          // 2. If already tracking (delegated PMA is active), send asynchronously so PMA isn't blocked
+          // 2. If already tracking (runner is active), send asynchronously so PMA isn't blocked
           await client.session.promptAsync({
             path: { id: args.session_id },
             body: { parts: [{ type: "text", text: args.text }] }
@@ -1253,7 +1253,7 @@ export default async function NomadWorksPlugin(input) {
               body: {
                 parts: [{ 
                   type: "text", 
-                  text: `[NomadFlow Error Notification] Delegated PMA workflow session ${sessionID} has ${event.type.split('.')[1]}. Please check the workflow session logs.` 
+                  text: `[NomadFlow Error Notification] Workflow Runner session ${sessionID} has ${event.type.split('.')[1]}. Please check the runner session logs.` 
                 }]
               }
             });
@@ -1376,7 +1376,7 @@ export default async function NomadWorksPlugin(input) {
           }
         }
 
-        if (id === "product_manager" && operatingTeamMode !== "full") {
+        if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
           if (agentConfig.tools) {
             delete agentConfig.tools.nomadflow_run_workflow;
             delete agentConfig.tools.nomadflow_prompt_workflow;

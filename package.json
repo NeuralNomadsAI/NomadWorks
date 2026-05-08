@@ -1,16 +1,26 @@
 {
   "name": "@neuralnomads/nomadworks",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NeuralNomadsAI/NomadWorks"
+  },
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "node scripts/build.js",
+    "prepack": "npm run build",
+    "release:check": "npm test && npm run build && npm pack --dry-run",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist",
     "agents",
     "docs",
+    "policies",
     "templates",
     "Agents_Common.md"
   ],

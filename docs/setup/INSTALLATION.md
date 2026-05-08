@@ -42,7 +42,12 @@ You do not need to manually run NomadWorks initialization commands as a first st
 
 When PMA initializes the repository, NomadWorks creates:
 
-- `.codenomad/nomadworks.yaml`
+- `.nomadworks/nomadworks.yaml`
+- `.nomadworks/policies/README.md`
+- `.nomadworks/agents/README.md`
+- `.nomadworks/agent-additions/README.md`
+- `.nomadworks/generated/agents/README.md`
+- `.nomadworks/generated/policies/README.md`
 - `codemap.yml`
 - `tasks/current.md`
 - `tasks/done.md`
@@ -51,7 +56,7 @@ When PMA initializes the repository, NomadWorks creates:
 
 ## 5. Configure NomadWorks
 
-Edit `.codenomad/nomadworks.yaml` to set defaults, features, and per-agent overrides.
+Edit `.nomadworks/nomadworks.yaml` to set defaults, features, policy extraction behavior, and per-agent config overrides. Use `.nomadworks/agents/` for full repository-local agent definitions or custom agents, and `.nomadworks/agent-additions/` for additive repo-specific agent instructions.
 
 See:
 

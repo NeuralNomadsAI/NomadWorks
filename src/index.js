@@ -9,34 +9,143 @@ import { nomadworks_validate_logic } from "./validate_logic.js";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_AGENTS_DIR = path.join(PKG_ROOT, "agents");
+const BUNDLE_POLICIES_DIR = path.join(PKG_ROOT, "policies");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 const MANDATORY_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 const MINI_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 const DISCUSSION_BACKFILL_FETCH_LIMIT = 100;
+const NOMADWORKS_DIRNAME = ".nomadworks";
+const LEGACY_NOMADWORKS_DIRNAME = ".codenomad";
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
+function nomadworksDir(worktree) {
+  return path.join(worktree, NOMADWORKS_DIRNAME);
+}
+
+function legacyNomadworksDir(worktree) {
+  return path.join(worktree, LEGACY_NOMADWORKS_DIRNAME);
+}
+
+function repoConfigPath(worktree) {
+  return path.join(nomadworksDir(worktree), "nomadworks.yaml");
+}
+
+function legacyRepoConfigPath(worktree) {
+  return path.join(legacyNomadworksDir(worktree), "nomadworks.yaml");
+}
+
+function repoPoliciesDir(worktree) {
+  return path.join(nomadworksDir(worktree), "policies");
+}
+
+function generatedPoliciesDir(worktree) {
+  return path.join(nomadworksDir(worktree), "generated", "policies");
+}
+
+function generatedAgentsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "generated", "agents");
+}
+
+function repoAgentsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "agents");
+}
+
+function repoAgentAdditionsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "agent-additions");
+}
+
+function legacyRepoAgentsDir(worktree) {
+  return path.join(legacyNomadworksDir(worktree), "nomadworks", "agents");
+}
+
+function runtimeDiscussionRegistryPath(worktree) {
+  return path.join(nomadworksDir(worktree), "runtime", "discussions.json");
+}
+
+function legacyDiscussionRegistryPath(worktree) {
+  return path.join(legacyNomadworksDir(worktree), "runtime", "discussions.json");
+}
+
+function resolveConfigPath(worktree) {
+  const repoPath = repoConfigPath(worktree);
+  if (fs.existsSync(repoPath)) return repoPath;
+
+  const legacyPath = legacyRepoConfigPath(worktree);
+  if (fs.existsSync(legacyPath)) return legacyPath;
+
+  return repoPath;
+}
+
+function listMarkdownFiles(dirPath) {
+  if (!fs.existsSync(dirPath)) return [];
+
+  try {
+    return fs.readdirSync(dirPath)
+      .filter(file => file.endsWith(".md") && file.toLowerCase() !== "readme.md");
+  } catch (e) {
+    console.error(`[NomadWorks] Failed to read markdown files from ${dirPath}:`, e);
+    return [];
+  }
+}
+
+function normalizePolicyExtraction(value) {
+  if (typeof value !== "string") return "none";
+  return value.trim().toLowerCase() === "all" ? "all" : "none";
+}
+
+function resolveIncludeFile(includeRef, repoRoot, bundleRoot) {
+  const trimmed = includeRef.trim();
+  const scopedMatch = trimmed.match(/^([a-z]+):(.*)$/i);
+  const scope = scopedMatch?.[1]?.toLowerCase();
+  const target = scopedMatch ? scopedMatch[2].trim() : trimmed;
+
+  const resolveRelative = (baseDir, relativePath) => {
+    if (!relativePath) return null;
+    return path.isAbsolute(relativePath) ? relativePath : path.join(baseDir, relativePath);
+  };
+
+  if (scope === "plugin") {
+    const filePath = resolveRelative(bundleRoot, target);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
+  if (scope === "repo") {
+    const filePath = resolveRelative(nomadworksDir(repoRoot), target);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
+  if (scope === "policy") {
+    const repoPolicyPath = resolveRelative(repoPoliciesDir(repoRoot), target);
+    if (repoPolicyPath && fs.existsSync(repoPolicyPath)) return repoPolicyPath;
+
+    const bundledPolicyPath = resolveRelative(BUNDLE_POLICIES_DIR, target);
+    return bundledPolicyPath && fs.existsSync(bundledPolicyPath) ? bundledPolicyPath : null;
+  }
+
+  const repoPath = resolveRelative(repoRoot, target);
+  if (repoPath && fs.existsSync(repoPath)) return repoPath;
+
+  const bundlePath = resolveRelative(bundleRoot, target);
+  return bundlePath && fs.existsSync(bundlePath) ? bundlePath : null;
+}
+
 /**
- * Resolves <include:filename.md> markers recursively.
- * Checks repo (worktree) first, then falls back to bundle root.
+ * Resolves <include:...> markers recursively.
+ * Supported forms:
+ * - <include:path/to/file.md> (legacy: repo root first, then plugin bundle)
+ * - <include:plugin:path/to/file.md>
+ * - <include:repo:path/inside/.nomadworks>
+ * - <include:policy:file.md> (.nomadworks/policies first, then bundled defaults)
  */
 function resolveIncludes(text, repoRoot, bundleRoot) {
   const includeRegex = /<include:(.*?)>/g;
-  return text.replace(includeRegex, (match, filename) => {
-    // Check repo first, then bundle
-    const repoPath = path.isAbsolute(filename) ? filename : path.join(repoRoot, filename);
-    const bundlePath = path.isAbsolute(filename) ? filename : path.join(bundleRoot, filename);
-
-    let filePath = null;
-    if (fs.existsSync(repoPath)) {
-      filePath = repoPath;
-    } else if (fs.existsSync(bundlePath)) {
-      filePath = bundlePath;
-    }
+  return text.replace(includeRegex, (match, includeRef) => {
+    const filePath = resolveIncludeFile(includeRef, repoRoot, bundleRoot);
 
     if (!filePath) {
-      console.warn(`[NomadWorks] Include file not found: ${filename}`);
-      return `\n\n# ERROR: Include file not found: ${filename}\n\n`;
+      console.warn(`[NomadWorks] Include file not found: ${includeRef}`);
+      return `\n\n# ERROR: Include file not found: ${includeRef}\n\n`;
     }
 
     const content = fs.readFileSync(filePath, "utf8");
@@ -117,12 +226,10 @@ function slugifyTitle(input) {
     .slice(0, 80) || "discussion";
 }
 
-function discussionRegistryPath(worktree) {
-  return path.join(worktree, ".codenomad", "runtime", "discussions.json");
-}
-
 function loadDiscussionRegistry(worktree) {
-  const registryPath = discussionRegistryPath(worktree);
+  const registryPath = fs.existsSync(runtimeDiscussionRegistryPath(worktree))
+    ? runtimeDiscussionRegistryPath(worktree)
+    : legacyDiscussionRegistryPath(worktree);
   if (!fs.existsSync(registryPath)) {
     return { version: 1, active: {} };
   }
@@ -138,41 +245,71 @@ function loadDiscussionRegistry(worktree) {
 }
 
 function saveDiscussionRegistry(worktree, registry) {
-  const registryPath = discussionRegistryPath(worktree);
+  const registryPath = runtimeDiscussionRegistryPath(worktree);
   const runtimeDir = path.dirname(registryPath);
   if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), "utf8");
 }
 
+function runtimeDiscussionsDir(worktree) {
+  return path.join(nomadworksDir(worktree), "runtime", "discussions");
+}
+
+function archivedRuntimeDiscussionsDir(worktree) {
+  return path.join(runtimeDiscussionsDir(worktree), "archive");
+}
+
+function finalDiscussionsDir(worktree) {
+  return path.join(worktree, "tasks", "discussions");
+}
+
 function nextDiscussionIdentity(worktree, title) {
-  const discussionsDir = path.join(worktree, "tasks", "discussions");
+  const discussionsDir = finalDiscussionsDir(worktree);
+  const runtimeDir = runtimeDiscussionsDir(worktree);
   if (!fs.existsSync(discussionsDir)) fs.mkdirSync(discussionsDir, { recursive: true });
+  if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
 
   let sequence = 1;
   while (true) {
     const id = `DISCUSSION-${String(sequence).padStart(3, "0")}`;
     const filename = `${id}-${slugifyTitle(title)}.md`;
-    const relativePath = path.join("tasks", "discussions", filename);
-    const absolutePath = path.join(worktree, relativePath);
-    if (!fs.existsSync(absolutePath)) {
-      return { id, filename, relativePath, absolutePath };
+    const summaryRelativePath = path.join("tasks", "discussions", filename);
+    const summaryAbsolutePath = path.join(worktree, summaryRelativePath);
+    const transcriptFilename = `${id}-transcript.md`;
+    const transcriptRelativePath = path.join(".nomadworks", "runtime", "discussions", transcriptFilename);
+    const transcriptAbsolutePath = path.join(worktree, transcriptRelativePath);
+    if (!fs.existsSync(summaryAbsolutePath) && !fs.existsSync(transcriptAbsolutePath)) {
+      return {
+        id,
+        filename,
+        summaryRelativePath,
+        summaryAbsolutePath,
+        transcriptFilename,
+        transcriptRelativePath,
+        transcriptAbsolutePath
+      };
     }
     sequence += 1;
   }
 }
 
 function findDiscussionById(worktree, discussionID) {
-  const discussionsDir = path.join(worktree, "tasks", "discussions");
+  const discussionsDir = finalDiscussionsDir(worktree);
   if (!fs.existsSync(discussionsDir)) return null;
 
   const entries = fs.readdirSync(discussionsDir).filter(name => name.startsWith(`${discussionID}-`) && name.endsWith(".md"));
   if (entries.length === 0) return null;
 
   const filename = entries.sort()[0];
+  const transcriptFilename = `${discussionID}-transcript.md`;
   return {
+    id: discussionID,
     filename,
-    relativePath: path.join("tasks", "discussions", filename),
-    absolutePath: path.join(discussionsDir, filename)
+    summaryRelativePath: path.join("tasks", "discussions", filename),
+    summaryAbsolutePath: path.join(discussionsDir, filename),
+    transcriptFilename,
+    transcriptRelativePath: path.join(".nomadworks", "runtime", "discussions", transcriptFilename),
+    transcriptAbsolutePath: path.join(runtimeDiscussionsDir(worktree), transcriptFilename)
   };
 }
 
@@ -249,10 +386,165 @@ async function appendMessageIfNeeded(client, worktree, registry, sessionID, mess
   const text = extractTextParts(response.data.parts || []);
   if (!text) return;
 
-  appendDiscussionMessage(path.join(worktree, discussion.filePath), speaker, text, messageID);
+  appendDiscussionMessage(path.join(worktree, discussion.transcriptPath), speaker, text, messageID);
   discussion.appendedMessageIDs ??= [];
   discussion.appendedMessageIDs.push(messageID);
   saveDiscussionRegistry(worktree, registry);
+}
+
+async function summarizeDiscussionWithBA(client, worktree, discussion) {
+  const transcriptPath = path.join(worktree, discussion.transcriptPath);
+  const summaryPath = path.join(worktree, discussion.summaryPath);
+  const summaryDir = path.dirname(summaryPath);
+  if (!fs.existsSync(summaryDir)) fs.mkdirSync(summaryDir, { recursive: true });
+
+  const hasExistingSummary = fs.existsSync(summaryPath);
+  const priorMtimeMs = hasExistingSummary ? fs.statSync(summaryPath).mtimeMs : null;
+  const summarizerSession = await client.session.create({
+    body: { title: `Discussion Summary: ${discussion.id}` }
+  });
+
+  const promptText = [
+    "[Agent Message] From: product_manager To: business_analyst",
+    "",
+    "Read the full runtime discussion transcript and convert it into a workflow-ready discussion summary.",
+    "",
+    `Discussion ID: ${discussion.id}`,
+    `Discussion Title: ${discussion.title}`,
+    `Source transcript: ${discussion.transcriptPath}`,
+    hasExistingSummary ? `Existing summary to update: ${discussion.summaryPath}` : "Existing summary to update: (none)",
+    `Write the final summary to this exact file path: ${discussion.summaryPath}`,
+    "",
+    "Do not return the full summary in chat. Write it into the target file and then return only a short confirmation that includes:",
+    "- the target file path",
+    "- whether the write succeeded",
+    "",
+    "Requirements:",
+    "1. Preserve all workflow-relevant detail.",
+    "2. Remove greetings, filler, repetition, and conversational back-and-forth that does not affect execution.",
+    "3. Do not omit facts, requests, constraints, non-goals, decisions, assumptions, open questions, risks, or referenced repository areas.",
+    "4. If something is unresolved, record it under Open Questions rather than guessing.",
+    "5. Convert implied but clearly supported details into explicit bullets when helpful.",
+    "6. Optimize the result for PMA and later subagents to act on it efficiently.",
+    "7. Do not include transcript-style dialogue formatting in the final artifact.",
+    "8. If an existing summary file is present, read it and carry forward its still-valid details while integrating the new transcript content.",
+    "",
+    "Write the file in this exact structure:",
+    "",
+    "---",
+    `id: ${discussion.id}`,
+    `title: ${JSON.stringify(discussion.title)}`,
+    "status: closed",
+    "summarized_by: business_analyst",
+    "source: runtime-transcript",
+    "---",
+    "",
+    "# Discussion Summary",
+    "",
+    "## Topic",
+    "<one short description>",
+    "",
+    "## Purpose",
+    "<why this discussion happened>",
+    "",
+    "## Repository Truth Relevant To This Discussion",
+    "- ...",
+    "",
+    "## Facts Established",
+    "- ...",
+    "",
+    "## Requirements Captured",
+    "- ...",
+    "",
+    "## Constraints",
+    "- ...",
+    "",
+    "## Non-Goals",
+    "- ...",
+    "",
+    "## Decisions Made",
+    "- ...",
+    "",
+    "## Assumptions",
+    "- ...",
+    "",
+    "## Open Questions",
+    "- ...",
+    "",
+    "## Risks Or Concerns",
+    "- ...",
+    "",
+    "## Referenced Files Or Areas",
+    "- ...",
+    "",
+    "## Recommended Workflow Next Step",
+    "- assigned_to: <agent or role>",
+    "- why: <reason>",
+    "",
+    "Quality bar:",
+    "- concise but complete",
+    "- no fluff",
+    "- no invented details",
+    "- no lost workflow-relevant detail",
+    "",
+    "If a later agent could make a wrong decision because a detail was omitted, that omission is a failure."
+  ].join("\n");
+
+  const response = await client.session.prompt({
+    path: { id: summarizerSession.data.id },
+    body: {
+      agent: "business_analyst",
+      parts: [{ type: "text", text: promptText }]
+    }
+  });
+
+  const confirmation = extractTextParts(response.data.parts || []);
+  return { confirmation, summaryPath, transcriptPath, hasExistingSummary, priorMtimeMs };
+}
+
+function archiveDiscussionTranscript(worktree, transcriptRelativePath) {
+  const sourcePath = path.join(worktree, transcriptRelativePath);
+  if (!fs.existsSync(sourcePath)) return null;
+
+  const archiveDir = archivedRuntimeDiscussionsDir(worktree);
+  if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
+
+  const targetPath = path.join(archiveDir, path.basename(sourcePath));
+  fs.renameSync(sourcePath, targetPath);
+  return targetPath;
+}
+
+async function finalizeClosingDiscussion(client, worktree, registry, sessionID, discussion) {
+  const { confirmation, summaryPath, hasExistingSummary, priorMtimeMs } = await summarizeDiscussionWithBA(client, worktree, discussion);
+  if (!fs.existsSync(summaryPath)) {
+    throw new Error(`Discussion summary was not written to ${discussion.summaryPath}`);
+  }
+
+  if (hasExistingSummary) {
+    const currentMtimeMs = fs.statSync(summaryPath).mtimeMs;
+    if (currentMtimeMs <= priorMtimeMs) {
+      throw new Error(`Discussion summary file was not updated at ${discussion.summaryPath}`);
+    }
+  }
+
+  const summaryContent = fs.readFileSync(summaryPath, "utf8").trim();
+  if (!summaryContent) {
+    throw new Error(`Discussion summary file is empty at ${discussion.summaryPath}`);
+  }
+
+  const transcriptPath = path.join(worktree, discussion.transcriptPath);
+  setDiscussionStatus(transcriptPath, "closed");
+  const archivedTranscriptPath = archiveDiscussionTranscript(worktree, discussion.transcriptPath);
+  delete registry.active[sessionID];
+  saveDiscussionRegistry(worktree, registry);
+
+  return {
+    confirmation,
+    summaryPath: discussion.summaryPath,
+    archivedTranscriptPath: archivedTranscriptPath
+      ? path.relative(worktree, archivedTranscriptPath)
+      : path.join(".nomadworks", "runtime", "discussions", "archive", path.basename(discussion.transcriptPath))
+  };
 }
 
 function normalizeTeamMode(value) {
@@ -269,7 +561,9 @@ function isAgentEnabledForTeamMode(agentId, teamMode) {
 
 function applyTeamConfigRules(repoCfg) {
   repoCfg.agents ??= {};
+  repoCfg.policies ??= {};
   repoCfg.team_mode = normalizeTeamMode(repoCfg.team_mode);
+  repoCfg.policies.extract_defaults = normalizePolicyExtraction(repoCfg.policies.extract_defaults);
 
   for (const id of MANDATORY_AGENTS) {
     if (repoCfg.agents[id]?.enabled === false) {
@@ -291,17 +585,177 @@ function isAgentEffectivelyEnabled(agentId, repoCfg) {
 }
 
 function getOperatingTeamMode(repoCfg) {
-  const hasArchitect = isAgentEffectivelyEnabled("technical_architect", repoCfg);
-  const hasRunner = isAgentEffectivelyEnabled("workflow_runner", repoCfg);
-  return hasArchitect && hasRunner ? "full" : "mini";
+  return repoCfg.team_mode;
 }
 
 function readResolvedFile(relativePath, worktree) {
-  const repoPath = path.join(worktree, relativePath);
-  const bundlePath = path.join(PKG_ROOT, relativePath);
-  const filePath = fs.existsSync(repoPath) ? repoPath : bundlePath;
-  if (!fs.existsSync(filePath)) return "";
+  const filePath = resolveIncludeFile(`plugin:${relativePath}`, worktree, PKG_ROOT);
+  if (!filePath || !fs.existsSync(filePath)) return "";
   return resolveIncludes(fs.readFileSync(filePath, "utf8"), worktree, PKG_ROOT).trim();
+}
+
+function loadMarkdownFragment(filePath, worktree) {
+  if (!fs.existsSync(filePath)) return "";
+
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const { body } = parseFrontmatter(raw);
+    return resolveIncludes(body.trim(), worktree, PKG_ROOT);
+  } catch (e) {
+    console.error(`[NomadWorks] Failed to read markdown fragment ${filePath}:`, e);
+    return "";
+  }
+}
+
+function loadAgentDefinition(filePath, worktree) {
+  if (!fs.existsSync(filePath)) return null;
+
+  try {
+    const rawContent = fs.readFileSync(filePath, "utf8");
+    const { data, body } = parseFrontmatter(rawContent);
+    const prompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
+    return { data, prompt };
+  } catch (e) {
+    console.error(`[NomadWorks] Failed to read agent definition ${filePath}:`, e);
+    return null;
+  }
+}
+
+function syncGeneratedPolicies(worktree, repoCfg) {
+  if (repoCfg.policies?.extract_defaults !== "all") return;
+  if (!fs.existsSync(BUNDLE_POLICIES_DIR)) return;
+
+  const generatedDir = generatedPoliciesDir(worktree);
+  if (!fs.existsSync(generatedDir)) fs.mkdirSync(generatedDir, { recursive: true });
+
+  const policyFiles = fs.readdirSync(BUNDLE_POLICIES_DIR).filter(file => file.endsWith(".md") && file !== "README.md");
+
+  for (const file of policyFiles) {
+    const sourcePath = path.join(BUNDLE_POLICIES_DIR, file);
+    const source = fs.readFileSync(sourcePath, "utf8").trimEnd();
+    const generated = [
+      "<!--",
+      "Generated from NomadWorks plugin defaults.",
+      "Do not edit this file directly; it may be overwritten.",
+      `To customize this policy, copy it to .nomadworks/policies/${file}.`,
+      "-->",
+      "",
+      source,
+      ""
+    ].join("\n");
+    fs.writeFileSync(path.join(generatedDir, file), generated, "utf8");
+  }
+}
+
+function ensureReadmeFile(dirPath, content) {
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+  const readmePath = path.join(dirPath, "README.md");
+  if (!fs.existsSync(readmePath)) {
+    fs.writeFileSync(readmePath, content, "utf8");
+  }
+}
+
+function scaffoldNomadworksReadmes(worktree) {
+  ensureReadmeFile(repoPoliciesDir(worktree), fs.readFileSync(path.join(BUNDLE_POLICIES_DIR, "README.md"), "utf8"));
+  ensureReadmeFile(repoAgentsDir(worktree), [
+    "# Repository Agents",
+    "",
+    "Place full repository-local agent definitions here.",
+    "",
+    "- Use `.nomadworks/agents/<agent>.md` to override a bundled agent's full base definition.",
+    "- Use `.nomadworks/agents/<agent>.md` to define a brand new custom repository agent.",
+    "- Files in this folder are treated as full agent definitions.",
+    "- `README.md` is ignored by agent discovery.",
+    "",
+    "## Include Types Available In Custom Agents",
+    "",
+    "Custom agents can use the same include resolution as bundled agents:",
+    "",
+    "- `<include:plugin:...>` for plugin-owned shared guidance",
+    "- `<include:policy:...>` for repository-overridable policy files with bundled defaults",
+    "- `<include:repo:...>` for explicit files under `.nomadworks/`",
+    "",
+    "## Common Plugin Includes",
+    "",
+    "- `plugin:Agents_Common.md`",
+    "- `plugin:docs/core/agent_orchestration.md`",
+    "- `plugin:docs/core/communication_guidelines.md`",
+    "- `plugin:docs/core/discussion_agent_guidelines.md`",
+    "- `plugin:docs/core/role_contracts.md`",
+    "- `plugin:docs/core/task_model.md`",
+    "- `plugin:docs/core/codemap_conventions.md`",
+    "- `plugin:docs/core/pma_mode_full.md`",
+    "- `plugin:docs/core/pma_mode_mini.md`",
+    "- `plugin:docs/core/tech_lead_mode_full.md`",
+    "- `plugin:docs/core/tech_lead_mode_mini.md`",
+    "",
+    "## Available Policy Includes",
+    "",
+    "- `policy:development-guidelines.md`",
+    "- `policy:testing-guidelines.md`",
+    "- `policy:documentation-guidelines.md`",
+    "- `policy:git-commit-messaging.md`",
+    "- `policy:product-guidelines.md`",
+    "- `policy:ui-ux-guidelines.md`",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(repoAgentAdditionsDir(worktree), [
+    "# Repository Agent Additions",
+    "",
+    "Place additive prompt fragments here to append repository-specific instructions to an existing agent.",
+    "",
+    "- Use `.nomadworks/agent-additions/<agent>.md` to add instructions to a bundled or custom repo agent.",
+    "- The matching base agent must exist in the plugin bundle or `.nomadworks/agents/`.",
+    "- `README.md` is ignored by agent discovery.",
+    "",
+    "## Include Types Available In Additions",
+    "",
+    "Agent additions can use the same include resolution as bundled agents and custom agents:",
+    "",
+    "- `<include:plugin:...>` for plugin-owned shared guidance",
+    "- `<include:policy:...>` for repository-overridable policy files with bundled defaults",
+    "- `<include:repo:...>` for explicit files under `.nomadworks/`",
+    "",
+    "## Common Plugin Includes",
+    "",
+    "- `plugin:Agents_Common.md`",
+    "- `plugin:docs/core/agent_orchestration.md`",
+    "- `plugin:docs/core/communication_guidelines.md`",
+    "- `plugin:docs/core/discussion_agent_guidelines.md`",
+    "- `plugin:docs/core/role_contracts.md`",
+    "- `plugin:docs/core/task_model.md`",
+    "- `plugin:docs/core/codemap_conventions.md`",
+    "",
+    "## Available Policy Includes",
+    "",
+    "- `policy:development-guidelines.md`",
+    "- `policy:testing-guidelines.md`",
+    "- `policy:documentation-guidelines.md`",
+    "- `policy:git-commit-messaging.md`",
+    "- `policy:product-guidelines.md`",
+    "- `policy:ui-ux-guidelines.md`",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(generatedAgentsDir(worktree), [
+    "# Generated Agent Prompts",
+    "",
+    "This folder contains generated final prompt dumps for inspection.",
+    "",
+    "- Files here are generated by NomadWorks and may be overwritten.",
+    "- Do not edit files here to customize agent behavior.",
+    "- Use `.nomadworks/agents/` for full agent definitions and `.nomadworks/agent-additions/` for additive instructions.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(generatedPoliciesDir(worktree), [
+    "# Generated Policy References",
+    "",
+    "This folder contains generated reference copies of bundled default policy files.",
+    "",
+    "- Files here are generated by NomadWorks and may be overwritten.",
+    "- Runtime does not read policies from this folder directly.",
+    "- Copy a file into `.nomadworks/policies/` if you want to customize it.",
+    ""
+  ].join("\n"));
 }
 
 function getModePromptFragment(agentId, operatingTeamMode, worktree) {
@@ -323,8 +777,8 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
 
 export default async function NomadWorksPlugin(input) {
   const worktree = path.resolve(input.worktree || process.cwd());
-  const debugDir = path.join(worktree, ".nomadworks", "agents");
-  const configPath = path.join(worktree, ".codenomad", "nomadworks.yaml");
+  const debugDir = generatedAgentsDir(worktree);
+  const configPath = resolveConfigPath(worktree);
   const discussionRegistry = loadDiscussionRegistry(worktree);
 
   // Load project-specific configuration
@@ -337,6 +791,8 @@ export default async function NomadWorksPlugin(input) {
     }
   }
   repoCfg = applyTeamConfigRules(repoCfg);
+  scaffoldNomadworksReadmes(worktree);
+  syncGeneratedPolicies(worktree, repoCfg);
   const operatingTeamMode = getOperatingTeamMode(repoCfg);
 
   const startAndMonitorWorkflow = async (sessionId, pmaSessionId, initialText, taskPath = null) => {
@@ -407,7 +863,7 @@ export default async function NomadWorksPlugin(input) {
           return "Error: team_mode must be either 'mini' or 'full'.";
         }
 
-        const cfgDir = path.join(context.worktree, ".codenomad");
+        const cfgDir = nomadworksDir(context.worktree);
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
 
         // Discover all agent IDs to enable them explicitly
@@ -417,7 +873,6 @@ export default async function NomadWorksPlugin(input) {
 
         const nomadworksTmplPath = path.join(TEMPLATES_DIR, "nomadworks.yaml.template");
         const codemapTmplPath = path.join(TEMPLATES_DIR, "codemap.yml.template");
-
         if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath)) {
           return "Error: Initialization templates not found in plugin.";
         }
@@ -447,6 +902,8 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(rootCodemapPath, codemapConfig, "utf8");
         }
 
+        scaffoldNomadworksReadmes(context.worktree);
+
         // Scaffold Task Registries
         const tasksDir = path.join(context.worktree, "tasks");
         const scrsDir = path.join(context.worktree, "docs", "scrs");
@@ -471,7 +928,24 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
-        return `NomadWorks initialized in '${requestedTeamMode}' team mode: .codenomad/nomadworks.yaml, registries, and codemap.yml created.`;
+        const initSummary = `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, repo policy/agent folders, registries, and codemap.yml created.`;
+
+        // Ensure OpenCode reloads config/agents after scaffolding changes.
+        // Not all environments expose this API, so treat it as best-effort.
+        const client = input.client;
+        if (client?.instance?.dispose) {
+          try {
+            const disposeRes = await client.instance.dispose({ query: { directory: context.worktree } });
+            if (disposeRes?.data === true) {
+              return `${initSummary}\n\nOpenCode instance disposed so the new config can be loaded.`;
+            }
+            return `${initSummary}\n\nWarning: instance.dispose did not report success. You may need to restart OpenCode to load the new config.`;
+          } catch (e) {
+            return `${initSummary}\n\nWarning: Failed to dispose OpenCode instance (${e?.message || "unknown error"}). You may need to restart OpenCode to load the new config.`;
+          }
+        }
+
+        return `${initSummary}\n\nNote: OpenCode instance dispose API unavailable in this environment. Restart OpenCode to load the new config.`;
       }
     }),
     nomadworks_validate: tool({
@@ -479,11 +953,16 @@ export default async function NomadWorksPlugin(input) {
       args: {},
       async execute(args, context) {
         const res = await nomadworks_validate_logic(context.worktree);
-        if (res.ok) {
-          return `PASS: All source directories indexed. Hierarchy validated.\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
-        } else {
-          return `FAIL: Validation errors found:\n${res.errors.map(e => "- " + e).join("\n")}\nWarnings: ${res.warnings.length}\n${res.warnings.map(w => "- " + w).join("\n")}`;
+
+        // Defensive: older plugin builds or custom forks may not return `warnings`.
+        const warnings = Array.isArray(res?.warnings) ? res.warnings : [];
+        const errors = Array.isArray(res?.errors) ? res.errors : [];
+
+        if (res?.ok) {
+          return `PASS: All source directories indexed. Hierarchy validated.\nWarnings: ${warnings.length}\n${warnings.map(w => "- " + w).join("\n")}`;
         }
+
+        return `FAIL: Validation errors found:\n${errors.map(e => "- " + e).join("\n")}\nWarnings: ${warnings.length}\n${warnings.map(w => "- " + w).join("\n")}`;
       }
     }),
     nomadworks_start_discussion: tool({
@@ -533,22 +1012,34 @@ export default async function NomadWorksPlugin(input) {
             }
           }
 
-          const existingFile = parseDiscussionFile(identity.absolutePath);
+          const existingFile = parseDiscussionFile(identity.summaryAbsolutePath);
           discussionTitle = existingFile.data.title || existingDiscussionID;
-          writeDiscussionFile(identity.absolutePath, {
-            ...existingFile.data,
+          const frontmatter = {
+            id: existingDiscussionID,
+            title: discussionTitle,
             status: "active",
             agent,
-            session_id: sessionID
-          }, existingFile.body);
+            session_id: sessionID,
+            appended_message_ids: []
+          };
+          const body = [
+            `# Discussion: ${discussionTitle}`,
+            "",
+            "## Prior Summary Reference",
+            `Source summary file: ${identity.summaryRelativePath}`,
+            "",
+            "## Messages"
+          ].join("\n");
+          writeDiscussionFile(identity.transcriptAbsolutePath, frontmatter, body);
 
           entry = {
             id: existingDiscussionID,
             title: discussionTitle,
-            filePath: identity.relativePath,
+            transcriptPath: identity.transcriptRelativePath,
+            summaryPath: identity.summaryRelativePath,
             status: "active",
             agent,
-            appendedMessageIDs: Array.isArray(existingFile.data.appended_message_ids) ? [...existingFile.data.appended_message_ids] : []
+            appendedMessageIDs: []
           };
         } else {
           discussionTitle = title;
@@ -561,12 +1052,13 @@ export default async function NomadWorksPlugin(input) {
             session_id: sessionID,
             appended_message_ids: []
           };
-          writeDiscussionFile(identity.absolutePath, frontmatter, `# Discussion: ${discussionTitle}\n\n## Messages`);
+          writeDiscussionFile(identity.transcriptAbsolutePath, frontmatter, `# Discussion: ${discussionTitle}\n\n## Messages`);
 
           entry = {
             id: identity.id,
             title: discussionTitle,
-            filePath: identity.relativePath,
+            transcriptPath: identity.transcriptRelativePath,
+            summaryPath: identity.summaryRelativePath,
             status: "active",
             agent,
             appendedMessageIDs: []
@@ -587,14 +1079,14 @@ export default async function NomadWorksPlugin(input) {
               if (message.info.role === "user") {
                 const text = extractTextParts(message.parts || []);
                 if (text) {
-                  appendDiscussionMessage(identity.absolutePath, "User", text, message.info.id);
+                  appendDiscussionMessage(identity.transcriptAbsolutePath, "User", text, message.info.id);
                   if (!entry.appendedMessageIDs.includes(message.info.id)) entry.appendedMessageIDs.push(message.info.id);
                   backfilled += 1;
                 }
               } else if (message.info.role === "assistant") {
                 const text = extractTextParts(message.parts || []);
                 if (text) {
-                  appendDiscussionMessage(identity.absolutePath, agent, text, message.info.id);
+                  appendDiscussionMessage(identity.transcriptAbsolutePath, agent, text, message.info.id);
                   if (!entry.appendedMessageIDs.includes(message.info.id)) entry.appendedMessageIDs.push(message.info.id);
                   backfilled += 1;
                 }
@@ -607,7 +1099,7 @@ export default async function NomadWorksPlugin(input) {
         }
 
         const action = existingDiscussionID ? "reopened" : "started";
-        return `SUCCESS: Discussion ${action}.\nID: ${entry.id}\nTitle: ${discussionTitle}\nFile: ${identity.relativePath}\nStatus: active\nBackfilled messages: ${backfilled}`;
+        return `SUCCESS: Discussion ${action}.\nID: ${entry.id}\nTitle: ${discussionTitle}\nTranscript: ${entry.transcriptPath}\nFinal Summary Target: ${entry.summaryPath}\nStatus: active\nBackfilled messages: ${backfilled}`;
       }
     }),
     nomadworks_stop_discussion: tool({
@@ -622,12 +1114,20 @@ export default async function NomadWorksPlugin(input) {
           return "FAIL: No active discussion exists for this session.";
         }
 
-        const discussionPath = path.join(context.worktree, existing.filePath);
-        setDiscussionStatus(discussionPath, "closing");
-        existing.status = "closing";
+        const discussionPath = path.join(context.worktree, existing.transcriptPath);
+        setDiscussionStatus(discussionPath, "summarizing");
+        existing.status = "summarizing";
         saveDiscussionRegistry(context.worktree, discussionRegistry);
 
-        return `SUCCESS: Discussion stop requested.\nID: ${existing.id}\nTitle: ${existing.title}\nFile: ${existing.filePath}\nStatus: closing`;
+        try {
+          const result = await finalizeClosingDiscussion(input.client, context.worktree, discussionRegistry, sessionID, existing);
+          return `SUCCESS: Discussion stopped and summarized.\nID: ${existing.id}\nTitle: ${existing.title}\nFinal Summary: ${result.summaryPath}\nStatus: closed`;
+        } catch (err) {
+          setDiscussionStatus(discussionPath, "active");
+          existing.status = "active";
+          saveDiscussionRegistry(context.worktree, discussionRegistry);
+          return `FAIL: Discussion summarization failed.\nID: ${existing.id}\nTitle: ${existing.title}\nTranscript: ${existing.transcriptPath}\nFinal Summary Target: ${existing.summaryPath}\nReason: ${err.message}`;
+        }
       }
     }),
      nomadflow_run_workflow: tool({
@@ -671,10 +1171,10 @@ export default async function NomadWorksPlugin(input) {
           ].filter(Boolean).join("\n");
 
           const lifecycleInstruction = workflowTrack === "implementation"
-            ? "Please execute the full lifecycle (Sync -> Implementation -> Commit -> Archive) and provide a final summary."
+            ? "You are the Workflow Runner. Execute the full lifecycle (Task Readiness Check -> Pre-Task Sync -> Workflow Execution Plan -> Delegate Implementation -> Delegate Verification -> Post-Task Sync -> Commit -> Archive). Read the task file first and verify it has sufficient PMA-provided task management context before doing anything else. Do not implement code directly. If implementation is required, delegate it to developer. If verification is required, delegate it to qa_engineer and tech_lead. If you hit a hard blocker, stop and END your run with a final summary that starts with 'HARD BLOCKER:' so the plugin can relay it back to PMA. Provide a final summary."
             : workflowTrack === "spec"
-              ? "Please execute the full spec lifecycle for this task, update the required documentation artifacts, and provide a final summary."
-              : "Please execute the investigation lifecycle for this task, capture findings clearly, and provide a final summary.";
+              ? "You are the Workflow Runner. Execute the full spec lifecycle for this task, delegate specialist work as needed, update the required documentation artifacts, and provide a final summary."
+              : "You are the Workflow Runner. Execute the investigation lifecycle for this task, delegate specialist work as needed, capture findings clearly, and provide a final summary.";
 
           const initialText = `Task File: ${args.task_path}\n${metadataSummary ? `\n${metadataSummary}` : ""}\n\nInstructions: ${args.instructions}\n\n${lifecycleInstruction}`;
           
@@ -776,11 +1276,6 @@ export default async function NomadWorksPlugin(input) {
           if (info.role === "assistant" && info.time?.completed) {
             const discussion = discussionRegistry.active[info.sessionID];
             await appendMessageIfNeeded(client, worktree, discussionRegistry, info.sessionID, info.id, discussion.agent || "Assistant");
-            if (discussion?.status === "closing") {
-              setDiscussionStatus(path.join(worktree, discussion.filePath), "closed");
-              delete discussionRegistry.active[info.sessionID];
-              saveDiscussionRegistry(worktree, discussionRegistry);
-            }
           }
         } catch (err) {
           if (debug) console.error("[NomadWorks] Failed to append discussion transcript:", err);
@@ -792,112 +1287,125 @@ export default async function NomadWorksPlugin(input) {
       
       const nomadworksActive = repoCfg && repoCfg.enabled === true;
 
-      // 1. Identify and compile all NomadWorks agents
-      const repoAgentsDir = path.join(worktree, ".codenomad", "nomadworks", "agents");
-      const agentSources = [];
-      if (fs.existsSync(BUNDLE_AGENTS_DIR)) agentSources.push(BUNDLE_AGENTS_DIR);
-      if (fs.existsSync(repoAgentsDir)) agentSources.push(repoAgentsDir);
+      // 1. Identify and compile all NomadWorks agents from bundled bases,
+      // repo-local full definitions, and additive repo-local fragments.
+      const repoAgentDefinitions = repoAgentsDir(worktree);
+      const repoAgentAdditions = repoAgentAdditionsDir(worktree);
+      const legacyAgentsDir = legacyRepoAgentsDir(worktree);
+      const bundledAgentFiles = listMarkdownFiles(BUNDLE_AGENTS_DIR);
+      const repoAgentFiles = listMarkdownFiles(repoAgentDefinitions);
+      const legacyAgentFiles = listMarkdownFiles(legacyAgentsDir);
+      const agentIds = new Set([
+        ...bundledAgentFiles.map(file => file.replace(".md", "")),
+        ...repoAgentFiles.map(file => file.replace(".md", "")),
+        ...legacyAgentFiles.map(file => file.replace(".md", ""))
+      ]);
 
       const ourAgents = {};
 
-      for (const agentsDir of agentSources) {
-        if (!fs.existsSync(agentsDir)) continue;
-        
-        let files = [];
-        try {
-          files = fs.readdirSync(agentsDir).filter(f => f.endsWith(".md"));
-        } catch (e) {
-          console.error(`[NomadWorks] Failed to read agents from ${agentsDir}:`, e);
+      for (const id of agentIds) {
+        const file = `${id}.md`;
+
+        if (!nomadworksActive && id !== "product_manager") {
           continue;
         }
 
-        for (const file of files) {
-          const id = file.replace(".md", "");
-          
-          if (!nomadworksActive && id !== "product_manager") {
-            continue;
-          }
+        const agentOverride = repoCfg.agents?.[id] || {};
+        const hasRepoDefinedAgent = repoAgentFiles.includes(file) || legacyAgentFiles.includes(file);
+        if (nomadworksActive) {
+          const enabledByConfig = typeof agentOverride.enabled === "boolean" ? agentOverride.enabled : null;
+          const enabled = enabledByConfig !== null
+            ? enabledByConfig || MANDATORY_AGENTS.has(id)
+            : (hasRepoDefinedAgent ? true : isAgentEffectivelyEnabled(id, repoCfg));
+          if (!enabled) continue;
+        }
 
-          const agentOverride = repoCfg.agents?.[id] || {};
-          if (nomadworksActive && !isAgentEffectivelyEnabled(id, repoCfg)) continue;
+        const bundledDefinition = loadAgentDefinition(path.join(BUNDLE_AGENTS_DIR, file), worktree);
+        const repoDefinition = loadAgentDefinition(path.join(repoAgentDefinitions, file), worktree)
+          || loadAgentDefinition(path.join(legacyAgentsDir, file), worktree);
 
-          const filePath = path.join(agentsDir, file);
-          let rawContent;
-          try {
-            rawContent = fs.readFileSync(filePath, "utf8");
-          } catch (e) {
-            console.error(`[NomadWorks] Failed to read agent file ${filePath}:`, e);
-            continue;
-          }
+        const activeDefinition = repoDefinition || bundledDefinition;
+        if (!activeDefinition) continue;
+        const { data } = activeDefinition;
 
-          const { data, body } = parseFrontmatter(rawContent);
-          let finalPrompt = resolveIncludes(body.trim(), worktree, PKG_ROOT);
-          const modePromptFragment = getModePromptFragment(id, operatingTeamMode, worktree);
-          if (modePromptFragment) {
-            finalPrompt = `${finalPrompt}\n\n${modePromptFragment}`;
-          }
-          const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
-          const model = agentOverride.model || data.model || repoCfg.defaults?.model;
-          
-          const agentConfig = {
-            description: data.description,
-            mode: agentOverride.mode || data.mode || "subagent",
-            prompt: finalPrompt,
-            tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
-            permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
-            model: toModelString(provider, model),
-            temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
-            disable: false
-          };
+        let finalPrompt = activeDefinition.prompt;
+        const modePromptFragment = getModePromptFragment(id, operatingTeamMode, worktree);
+        if (modePromptFragment) {
+          finalPrompt = `${finalPrompt}\n\n${modePromptFragment}`;
+        }
 
-          const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
-          
-          const defaults = repoCfg.defaults || {};
-          for (const k of Object.keys(defaults)) {
-            if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
-          }
-          for (const k of Object.keys(data)) {
-            if (!specialKeys.includes(k)) agentConfig[k] = data[k];
-          }
-          for (const k of Object.keys(agentOverride)) {
-            if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
-          }
+        const additionFragment = loadMarkdownFragment(path.join(repoAgentAdditions, file), worktree);
+        if (additionFragment) {
+          finalPrompt = `${finalPrompt}\n\n# Repository-Specific ${id} Additions\n\n${additionFragment}`;
+        }
 
-          if (Array.isArray(agentOverride.tools_add)) {
-            agentConfig.tools ??= {};
-            for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
-          }
-          if (Array.isArray(agentOverride.tools_remove)) {
-            if (agentConfig.tools) {
-              for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
-            }
-          }
+        const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
+        const model = agentOverride.model || data.model || repoCfg.defaults?.model;
 
-          if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
-            if (agentConfig.tools) {
-              delete agentConfig.tools.nomadflow_run_workflow;
-              delete agentConfig.tools.nomadflow_prompt_workflow;
-            }
+        const agentConfig = {
+          description: data.description,
+          mode: agentOverride.mode || data.mode || "subagent",
+          prompt: finalPrompt,
+          tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
+          permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
+          model: toModelString(provider, model),
+          temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
+          disable: false
+        };
+
+        const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
+
+        const defaults = repoCfg.defaults || {};
+        for (const k of Object.keys(defaults)) {
+          if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
+        }
+        for (const k of Object.keys(data)) {
+          if (!specialKeys.includes(k)) agentConfig[k] = data[k];
+        }
+        for (const k of Object.keys(agentOverride)) {
+          if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
+        }
+
+        if (Array.isArray(agentOverride.tools_add)) {
+          agentConfig.tools ??= {};
+          for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
+        }
+        if (Array.isArray(agentOverride.tools_remove)) {
+          if (agentConfig.tools) {
+            for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
           }
+        }
 
-          ourAgents[id] = agentConfig;
+        if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
+          if (agentConfig.tools) {
+            delete agentConfig.tools.nomadflow_run_workflow;
+            delete agentConfig.tools.nomadflow_prompt_workflow;
+          }
+        }
 
-          if (repoCfg.features?.debug_dumps !== false) {
-            const debugPath = path.join(debugDir, `${id}.md`);
-            const { prompt, ...dumpConfig } = agentConfig;
-            const debugHeader = `---
+        ourAgents[id] = agentConfig;
+
+        if (repoCfg.features?.debug_dumps !== false) {
+          const debugPath = path.join(debugDir, `${id}.md`);
+          const { prompt, ...dumpConfig } = agentConfig;
+          const debugHeader = `---
 ${YAML.stringify(dumpConfig).trim()}
 ---`;
-            try {
-              if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-              fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
-            } catch (e) { /* ignore debug errors */ }
-          }
+          try {
+            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+            fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+          } catch (e) { /* ignore debug errors */ }
         }
       }
 
       const builtInAgents = ["build", "plan", "general", "explore"];
-      const allToDisable = new Set([...builtInAgents, ...Object.keys(cfg.agent)]);
+      const preserveExistingAgents = repoCfg.features?.keep_builtin_agents === true;
+      const allToDisable = preserveExistingAgents
+        ? new Set()
+        : new Set([...builtInAgents, ...Object.keys(cfg.agent)]);
+
+      // Some users want to keep OpenCode's existing agents available alongside NomadWorks.
+      // In that mode, avoid disabling anything that OpenCode already registered.
       
       for (const id of allToDisable) {
         if (!ourAgents[id]) {

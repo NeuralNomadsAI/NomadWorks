@@ -37,7 +37,7 @@ User request
 ## Full Team Responsibilities
 
 - **PMA:** orchestration, routing, final closure
-- **Workflow Runner:** separate-session execution for complex workflows
+- **Workflow Runner:** separate-session orchestration for complex workflows
 - **BA:** product truth and acceptance criteria
 - **Technical Architect:** architecture and decomposition
 - **Tech Lead:** technical leadership and behavioral verification

@@ -21,5 +21,5 @@ You are operating in **full team mode**.
 
 ## Full Team Complex Workflow
 
-- When using `workflow_runner`, treat it as a separate execution session that owns pre-sync, execution, post-task sync, and final reporting.
+- When using `workflow_runner`, treat it as a separate execution session that owns task-readiness validation, pre-sync, specialist delegation, post-task sync, finalization, and final reporting.
 - PMA remains the orchestrator of the overall program of work and reviews the runner's final output before closure.

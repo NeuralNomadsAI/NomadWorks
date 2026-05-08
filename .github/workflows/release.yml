@@ -1,0 +1,72 @@
+name: Release npm package
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+concurrency:
+  group: npm-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify package is releasable
+        run: npm run release:check
+
+      - name: Resolve publish version
+        id: resolve
+        run: node scripts/resolve-release-version.js "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Show resolved release plan
+        run: |
+          echo "branch=${GITHUB_REF_NAME}"
+          echo "package=${{ steps.resolve.outputs.package_name }}"
+          echo "channel=${{ steps.resolve.outputs.channel }}"
+          echo "version=${{ steps.resolve.outputs.version }}"
+          echo "publish_tag=${{ steps.resolve.outputs.publish_tag }}"
+          echo "should_publish=${{ steps.resolve.outputs.should_publish }}"
+          echo "reason=${{ steps.resolve.outputs.reason }}"
+
+      - name: Apply publish version
+        if: steps.resolve.outputs.should_publish == 'true'
+        run: npm version "${{ steps.resolve.outputs.version }}" --no-git-tag-version
+
+      - name: Publish package to npm
+        if: steps.resolve.outputs.should_publish == 'true'
+        run: npm publish --provenance --tag "${{ steps.resolve.outputs.publish_tag }}"
+
+      - name: Release summary
+        run: |
+          {
+            echo "## npm release"
+            echo ""
+            echo "- Branch: ${GITHUB_REF_NAME}"
+            echo "- Package: ${{ steps.resolve.outputs.package_name }}"
+            echo "- Channel: ${{ steps.resolve.outputs.channel }}"
+            echo "- Version: ${{ steps.resolve.outputs.version }}"
+            echo "- npm tag: ${{ steps.resolve.outputs.publish_tag }}"
+            echo "- Published: ${{ steps.resolve.outputs.should_publish }}"
+            echo "- Reason: ${{ steps.resolve.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"

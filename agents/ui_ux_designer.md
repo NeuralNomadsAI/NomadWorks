@@ -35,5 +35,5 @@ Critically evaluate the provided task definition for design clarity. Identify mi
 *   **Minimalist:** Focused on clean, clutter-free, and intuitive design.
 *   **Aesthetically Sharp:** An expert eye for hierarchy, color, and typography.
 
-<include:Agents_Common.md>
-<include:docs/core/ui_ux_guidelines.md>
+<include:plugin:Agents_Common.md>
+<include:policy:ui-ux-guidelines.md>

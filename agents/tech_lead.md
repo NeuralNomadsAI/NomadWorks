@@ -32,7 +32,9 @@ Critically evaluate the provided task definition. Ensure it contains all necessa
 *   **Mentor-Minded:** Dedicated to leveling up the team and providing clear guidance.
 *   **Decisive:** Able to resolve complex blockers and drive the team forward.
 
-<include:Agents_Common.md>
-<include:docs/core/discussion_agent_guidelines.md>
-<include:docs/core/tech_lead_guidelines.md>
-<include:docs/core/codemap_conventions.md>
+<include:plugin:Agents_Common.md>
+<include:plugin:docs/core/discussion_agent_guidelines.md>
+<include:policy:development-guidelines.md>
+<include:policy:testing-guidelines.md>
+<include:policy:git-commit-messaging.md>
+<include:plugin:docs/core/codemap_conventions.md>

@@ -27,12 +27,36 @@ reopened_count: 0
 - **Assigned To:** `[product_manager | business_analyst | tech_lead | technical_architect | developer | qa_engineer | ui_ux_designer | workflow_runner]`
 - **Handoff From:** `[agent_name or null]`
 
+## Definition Of Ready Check
+- [ ] Scope is clear, bounded, and appropriate for the task's declared complexity.
+- [ ] Acceptance criteria are present, testable, and aligned with the objective.
+- [ ] Complexity, track, and slice are set correctly.
+- [ ] Required dependencies, assumptions, blockers, and open questions are resolved or explicitly recorded.
+- [ ] Required pre-sync specialist review is complete.
+- [ ] Required SCR exists and is approved when the workflow requires it.
+
 ## Acceptance Criteria
 - [ ] AC-1: [Primary behavioral or task outcome]
 - [ ] AC-2: [Secondary outcome, validation, or edge-case requirement]
 - [ ] AC-3: Relevant verification is completed and evidence is recorded against each acceptance criterion.
 - [ ] AC-4: Product documentation reflects the latest state of the application for this change, or this task explicitly records that no product-truth update was required.
 - [ ] AC-5: Technical documentation reflects any architectural or implementation-significant change, or this task explicitly records that no technical-truth update was required.
+
+## Acceptance Criteria Verification Map
+- [ ] AC-1
+  - **Method:** `[unit test | integration test | e2e | manual check | doc review]`
+  - **Owner:** `[agent_name]`
+  - **Evidence:** `[optional path or note]`
+- [ ] AC-2
+  - **Method:** `[unit test | integration test | e2e | manual check | doc review]`
+  - **Owner:** `[agent_name]`
+  - **Evidence:** `[optional path or note]`
+- [ ] AC-3
+  - **Method:** `[unit test | integration test | e2e | manual check | doc review]`
+  - **Owner:** `[agent_name]`
+  - **Evidence:** `[optional path or note]`
+
+Use this section to record how each acceptance criterion will be verified. Evidence links are optional and should be added when they materially improve traceability. Shared evidence may cover multiple acceptance criteria.
 
 ### Source Authority (MANDATORY)
 *   **Spec Reference:** [Commit Hash or SCR ID from documentation update]
@@ -99,6 +123,16 @@ Use this section when a task that was thought to be done must be resumed using t
 * [ ] UI / UX Designer: Visual UI/UX Review
 * [ ] Product Manager: Acceptance Criteria and Evidence Coverage Verification
 * [ ] User: Final Approval
+
+## Definition Of Done Check
+- [ ] All in-scope acceptance criteria are satisfied or explicitly marked blocked with reason.
+- [ ] Required tests, builds, and verification commands pass.
+- [ ] Required evidence and verification artifacts are recorded.
+- [ ] Documentation impact is resolved according to repository policy.
+- [ ] Relevant CodeMap updates are complete when needed.
+- [ ] Task files and workflow registries are updated.
+- [ ] Authorized review and closure checks are complete.
+- [ ] Final committed state contains all required code, documentation, and registry updates.
 
 ### Finalization
 * [ ] [Assigned Agent]: CodeMap Update (Update `codemap.yml` if entrypoints/wiring changed)

@@ -33,6 +33,5 @@ All automated tests MUST pass successfully with a 100% pass rate. No 'expected s
 *   **Analytical:** Interprets results to find the root cause of failures.
 *   **User-Flow Focused:** Always views the system through the eyes of the end-user.
 
-<include:Agents_Common.md>
-<include:docs/core/qa_guidelines.md>
-<include:docs/core/testing_strategy.md>
+<include:plugin:Agents_Common.md>
+<include:policy:testing-guidelines.md>

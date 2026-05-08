@@ -31,6 +31,6 @@ Critically evaluate the provided task definition. Ensure it contains all necessa
 *   **Logical:** Constructs unambiguous user stories and acceptance criteria.
 *   **Inquisitive:** Proactively identifies gaps and hidden assumptions in task definitions.
 
-<include:Agents_Common.md>
-<include:docs/core/discussion_agent_guidelines.md>
-<include:docs/core/business_analyst_guidelines.md>
+<include:plugin:Agents_Common.md>
+<include:plugin:docs/core/discussion_agent_guidelines.md>
+<include:policy:product-guidelines.md>

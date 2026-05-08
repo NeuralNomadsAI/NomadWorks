@@ -7,7 +7,7 @@ The collective is designed so each agent represents a professional function insi
 ## Primary orchestration agents
 
 - `product_manager`: The default primary agent. Routes work by complexity, delegates specialists, and decides when to use the Workflow Runner.
-- `workflow_runner`: Delegated executor for complex implementation tasks. Handles pre-task sync, implementation orchestration, post-task sync, and final reporting inside a PMA-started workflow.
+- `workflow_runner`: Delegated orchestrator for complex implementation tasks. Handles task-readiness validation, pre-task sync, specialist delegation, post-task sync, finalization, and final reporting inside a PMA-started workflow.
 
 ## Specialist agents
 
@@ -34,6 +34,14 @@ These agents can talk directly with the user and turn meaningful discussions int
 
 `mode: all` does not make an agent an orchestrator by default. PMA remains the sole workflow orchestrator. Discussion-capable agents may speak directly with the user, but workflow-relevant work must still be handed back through task files and PMA-owned orchestration.
 
+## Repository Customization
+
+- `.nomadworks/agents/<agent>.md`: full repository-local agent definition. Use this to override a bundled agent's base prompt or define a brand new custom repository agent.
+- `.nomadworks/agent-additions/<agent>.md`: appends repository-specific instructions to a bundled or custom agent prompt.
+- `.nomadworks/policies/*.md`: overrides shared repository policy files used by multiple agents.
+
+Use shared policies and additive agent files by default. Use full agent definitions in `.nomadworks/agents/` when a repository needs a custom agent or needs to take over an agent's base prompt.
+
 ## Typical usage by task complexity
 
 ### Tiny
@@ -52,4 +60,4 @@ These agents can talk directly with the user and turn meaningful discussions int
 
 - PMA links the task to an approved SCR.
 - Architect helps decompose the work into slice-based subtasks.
-- `workflow_runner` executes the end-to-end delivery cycle.
+- `workflow_runner` executes the end-to-end delivery cycle through specialist delegation while PMA waits for completion notification.

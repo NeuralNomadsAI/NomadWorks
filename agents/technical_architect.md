@@ -33,5 +33,6 @@ Critically evaluate the provided task definition. Ensure it contains all necessa
 *   **Visionary:** Able to design robust patterns that anticipate future growth.
 *   **Pragmatic:** Balances technical excellence with practical delivery goals.
 
-<include:Agents_Common.md>
-<include:docs/core/codemap_conventions.md>
+<include:plugin:Agents_Common.md>
+<include:policy:development-guidelines.md>
+<include:plugin:docs/core/codemap_conventions.md>

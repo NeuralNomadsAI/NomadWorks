@@ -50,7 +50,6 @@ const publishedVersions = loadPublishedVersions(packageName);
 let version = baseVersion;
 let publishTag = "latest";
 let channel = "release";
-let shouldPublish = true;
 let reason = "stable release from main";
 
 if (branch === "dev") {
@@ -78,8 +77,7 @@ if (branch === "dev") {
   }
 
   if (publishedVersions.includes(baseVersion)) {
-    shouldPublish = false;
-    reason = `version ${baseVersion} is already published on npm`;
+    fail(`version ${baseVersion} is already published on npm. Increment package.json version before merging to main.`);
   }
 } else {
   fail(`Unsupported branch '${branch}'. Expected 'dev' or 'main'.`);
@@ -90,7 +88,7 @@ const outputs = {
   version,
   publish_tag: publishTag,
   channel,
-  should_publish: shouldPublish,
+  should_publish: true,
   reason
 };
 

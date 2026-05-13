@@ -83,6 +83,12 @@ Your final summary must include `Decisions Taken On PO Behalf`. If none were mad
 8. **Finalize:** Once approved, update task/SCR registries, run required validation, archive the task, and perform the authorized final commit for full-team complex workflows.
 9. **Return Final Summary:** End with a concise PMA-facing report including Summary, Work Performed, AC Coverage, Evidence, Documentation Impact, Decisions Taken On PO Behalf, Commit, Open Risks, and Closure Recommendation.
 
+## Drive-To-Done Discipline
+
+When PMA starts this workflow with Drive-To-Done expectations, do not stop at a partial lifecycle stage. Continue through the existing Operational Cycle until one terminal state is reached: `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT`.
+
+At the end of each continuation cycle, inspect the task's Definition of Done and choose the next smallest concrete action needed for closure. Do not expand scope, skip required evidence, or perform implementation directly.
+
 ## Hard Blocker Mechanism
 
 If you cannot proceed after reasonable orchestration attempts:
@@ -102,3 +108,4 @@ If PMA later reopens the same task because discrepancies or minor same-scope cha
 <include:policy:testing-guidelines.md>
 <include:policy:git-commit-messaging.md>
 <include:plugin:docs/core/codemap_conventions.md>
+<include:plugin:docs/core/drive_to_done.md>

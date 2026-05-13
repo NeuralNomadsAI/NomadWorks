@@ -17,6 +17,9 @@ defaults:
 features:
   debug_dumps: true
   codemap_verification: true
+  # drive_to_done: false
+  # session_memory: false
+  # pai_context: false
 
 policies:
   extract_defaults: none
@@ -115,3 +118,6 @@ Create `.nomadworks/agents/<agent>.md` to:
 ## Feature flags
 
 - `features.keep_builtin_agents`: when `true`, NomadWorks will not disable agents that OpenCode already registered, including built-in agents such as `build`, `plan`, `general`, and `explore`. NomadWorks will still set `product_manager` as the default agent.
+- `features.drive_to_done`: when `true`, PMA may explicitly keep a task lifecycle moving until `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT` using the existing task/evidence workflow.
+- `features.session_memory`: when `true`, enables portable workflow memory export/import tools.
+- `features.pai_context`: when `true`, injects selected `.nomadworks/pai/USER` files into configured agent prompts.

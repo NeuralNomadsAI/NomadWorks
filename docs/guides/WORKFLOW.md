@@ -93,6 +93,16 @@ Track these task files under `Active Discussions` in `tasks/current.md` until th
 - `investigation`: produce findings, reproduction notes, logs when useful, and a recommended next step.
 - `spec`: produce SCR and documentation updates that capture the accepted change definition and product/architecture impact.
 
+## Drive-To-Done
+
+When Drive-To-Done is explicitly active, PMA or Workflow Runner continues the current task lifecycle until `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT`.
+
+- `DONE`: Definition of Done is satisfied and closure authority approves the result.
+- `HARD BLOCKER`: safe progress is impossible without a specific missing input or external fix.
+- `CYCLE LIMIT`: the configured continuation limit is reached before closure.
+
+Drive-To-Done uses existing task files, acceptance criteria, evidence, and registries. It is not a separate workflow model.
+
 SCR files use similarly lightweight frontmatter:
 
 ```yaml

@@ -13,6 +13,26 @@ features:
   # debug_logs: false # Enable detailed console logging for the plugin
   # keep_builtin_agents: false # If true, do not disable agents OpenCode already registered, including built-ins
   codemap_verification: true
+  # drive_to_done: false # If true, PMA may explicitly run tasks until DONE, HARD BLOCKER, or CYCLE LIMIT
+  # session_memory: false # If true, enables portable workflow memory export/import tools
+  # pai_context: false # If true, injects selected .nomadworks/pai/USER context into configured agents
+
+drive_to_done:
+  max_cycles: 5
+
+session_memory:
+  # repo_path: ../nomadworks-memory # Optional Git-managed memory directory, absolute or relative to the worktree
+  include_runtime: false
+
+pai:
+  context_files:
+    - USER/ABOUTME.md
+    - USER/TELOS.md
+    - USER/AISTEERINGRULES.md
+  apply_to_agents:
+    - product_manager
+    - business_analyst
+    - tech_lead
 
 policies:
   extract_defaults: none # Set to 'all' to write bundled policy defaults to .nomadworks/generated/policies/

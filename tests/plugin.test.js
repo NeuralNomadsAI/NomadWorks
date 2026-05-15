@@ -20,6 +20,17 @@ function createGitRepo() {
   return root;
 }
 
+function createGitWorktree(configText, remoteUrl) {
+  const root = createTestEnv(configText);
+  const init = spawnSync("git", ["init"], { cwd: root, encoding: "utf8", shell: false });
+  if (init.status !== 0) throw new Error(init.stderr || init.stdout || "git init failed");
+  if (remoteUrl) {
+    const remote = spawnSync("git", ["remote", "add", "origin", remoteUrl], { cwd: root, encoding: "utf8", shell: false });
+    if (remote.status !== 0) throw new Error(remote.stderr || remote.stdout || "git remote add failed");
+  }
+  return root;
+}
+
 describe("NomadWorks plugin PAI behavior", () => {
   test("plugin load does not scaffold PAI sync folders without PAI or memory configuration", async () => {
     const worktree = createTestEnv([
@@ -109,6 +120,46 @@ describe("NomadWorks plugin PAI behavior", () => {
     expect(result.is_git_repository).toBe(true);
   });
 
+  test("workspace PAI identity is stable across worktree paths for the same Git remote", async () => {
+    const paiRoot = createGitRepo();
+    const remoteUrl = "https://github.com/NeuralNomadsAI/NomadWorks.git";
+    const config = [
+      "features:",
+      "  debug_dumps: false",
+      "pai:",
+      `  root: ${JSON.stringify(paiRoot)}`,
+      ""
+    ].join("\n");
+    const firstWorktree = createGitWorktree(config, remoteUrl);
+    const secondWorktree = createGitWorktree(config, remoteUrl);
+
+    const firstPlugin = await NomadWorksPlugin({ worktree: firstWorktree, options: {} });
+    const secondPlugin = await NomadWorksPlugin({ worktree: secondWorktree, options: {} });
+    const firstStatus = JSON.parse(await firstPlugin.tool.nomadworks_sync_status.execute({}, { worktree: firstWorktree }));
+    const secondStatus = JSON.parse(await secondPlugin.tool.nomadworks_sync_status.execute({}, { worktree: secondWorktree }));
+
+    expect(firstStatus.workspace_root).toBe(secondStatus.workspace_root);
+    expect(firstStatus.workspace_root).toContain(path.join("WORKSPACES", "github.com-neuralnomadsai-nomadworks"));
+  });
+
+  test("workspace PAI identity honors pai.workspace.id override", async () => {
+    const paiRoot = createGitRepo();
+    const worktree = createGitWorktree([
+      "features:",
+      "  debug_dumps: false",
+      "pai:",
+      `  root: ${JSON.stringify(paiRoot)}`,
+      "  workspace:",
+      "    id: Team Override Repo",
+      ""
+    ].join("\n"), "https://github.com/NeuralNomadsAI/NomadWorks.git");
+    const plugin = await NomadWorksPlugin({ worktree, options: {} });
+
+    const result = JSON.parse(await plugin.tool.nomadworks_sync_status.execute({}, { worktree }));
+
+    expect(result.workspace_root).toContain(path.join("WORKSPACES", "team-override-repo"));
+  });
+
   test("sync push reports failed Git commands as FAIL", async () => {
     const paiRoot = createGitRepo();
     const worktree = createTestEnv([
@@ -155,8 +206,41 @@ describe("NomadWorks plugin PAI behavior", () => {
     await expect(plugin.tool.nomadworks_session_export.execute({ session_ids: "abc" }, { worktree })).resolves.toMatch(/^FAIL: Configure pai\.root/);
   });
 
-  test("session import rejects manifest entries outside SESSIONS json exports", async () => {
+  test("session export fails before writing when configured PAI root is not a Git repository", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
     const paiRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nomadworks-pai-test-"));
+    const worktree = createTestEnv([
+      "features:",
+      "  debug_dumps: false",
+      "pai:",
+      `  root: ${JSON.stringify(paiRoot)}`,
+      ""
+    ].join("\n"));
+    const plugin = await NomadWorksPlugin({ worktree, options: {} });
+    consoleError.mockRestore();
+
+    await expect(plugin.tool.nomadworks_session_export.execute({ session_ids: "abc" }, { worktree })).resolves.toMatch(/^FAIL: PAI root is not an existing Git repository/);
+    expect(fs.existsSync(path.join(paiRoot, "WORKSPACES"))).toBe(false);
+  });
+
+  test("session import fails fast when configured PAI root is not a Git repository", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    const paiRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nomadworks-pai-test-"));
+    const worktree = createTestEnv([
+      "features:",
+      "  debug_dumps: false",
+      "pai:",
+      `  root: ${JSON.stringify(paiRoot)}`,
+      ""
+    ].join("\n"));
+    const plugin = await NomadWorksPlugin({ worktree, options: {} });
+    consoleError.mockRestore();
+
+    await expect(plugin.tool.nomadworks_session_import.execute({}, { worktree })).resolves.toMatch(/^FAIL: PAI root is not an existing Git repository/);
+  });
+
+  test("session import rejects manifest entries outside SESSIONS json exports", async () => {
+    const paiRoot = createGitRepo();
     const worktree = createTestEnv([
       "features:",
       "  debug_dumps: false",

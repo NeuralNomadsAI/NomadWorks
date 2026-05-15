@@ -1,0 +1,14 @@
+scope: module
+parent: ../codemap.yml
+entrypoints:
+  - path: index.js
+    description: NomadWorks OpenCode plugin entrypoint and tool wiring.
+internals:
+  - path: validate_logic.js
+    description: CodeMap and workflow artifact validation implementation.
+invariants:
+  - PAI durable sync state must stay outside the project worktree.
+  - Mutating PAI/session tools require a Git-backed PAI root.
+commands:
+  - npm test
+  - npm run build

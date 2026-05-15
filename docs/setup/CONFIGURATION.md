@@ -147,6 +147,8 @@ pai:
   opencode_command: opencode
   workspace:
     enabled: true
+    # Optional stable override when the Git remote cannot identify this repo uniquely.
+    # id: neuralnomads-nomadworks
     context_files:
       - MEMORY/PROJECT.md
       - MEMORY/DECISIONS.md
@@ -161,8 +163,8 @@ pai:
     - tech_lead
 ```
 
-When enabled, NomadWorks appends selected global PAI files first, then selected workspace PAI files. Both live in the Git-managed PAI root, outside the project repository. Global PAI uses `USER/`, `MEMORY/`, and `LEARNINGS/`; workspace PAI uses `WORKSPACES/<repo-id>/`. Neither overrides repository truth, SCRs, task files, evidence, docs, or CodeMaps.
+When enabled, NomadWorks appends selected global PAI files first, then selected workspace PAI files. Both live in the Git-managed PAI root, outside the project repository. Global PAI uses `USER/`, `MEMORY/`, and `LEARNINGS/`; workspace PAI uses `WORKSPACES/<repo-id>/`. The workspace `<repo-id>` is derived from the repository's stable Git identity, preferring the normalized remote URL/full name rather than the local worktree folder name. Set `pai.workspace.id` only for edge cases where the Git identity is unavailable or must be overridden. Neither overrides repository truth, SCRs, task files, evidence, docs, or CodeMaps.
 
-Use `nomadworks_session_export` to export selected sessions using native `opencode export <sessionID>` JSON. When no `session_ids` are provided, export only works if the OpenCode runtime supplies the current session ID in the tool context; otherwise the tool returns a failure asking for explicit session IDs. Use `nomadworks_session_import` on another machine after `nomadworks_sync_pull` to import those files with native `opencode import <file>`.
+Use `nomadworks_session_export` to export selected sessions using sanitized native `opencode export --sanitize <sessionID>` JSON by default. Raw exports require the explicit `raw_export: true` tool argument and should only be used when the caller accepts the sensitivity risk. When no `session_ids` are provided, export only works if the OpenCode runtime supplies the current session ID in the tool context; otherwise the tool returns a failure asking for explicit session IDs. Use `nomadworks_session_import` on another machine after `nomadworks_sync_pull` to import those files with native `opencode import <file>`.
 
-Use `nomadworks_sync_pull` and `nomadworks_sync_push` for Git. Git, not NomadWorks, handles text-file merges and conflicts in the PAI root. If there are no changes to commit, `nomadworks_sync_push` returns status `no_changes` and does not run `git push`. Global PAI lives under `USER/`, `MEMORY/`, and `LEARNINGS/`; repo-specific PAI lives under `WORKSPACES/<repo-id>/`.
+Use `nomadworks_sync_pull` and `nomadworks_sync_push` for Git. Git, not NomadWorks, handles text-file merges and conflicts in the PAI root. Mutating PAI/session tools fail fast unless the configured PAI root already contains `.git`. If there are no changes to commit, `nomadworks_sync_push` returns status `no_changes` and does not run `git push`. Global PAI lives under `USER/`, `MEMORY/`, and `LEARNINGS/`; repo-specific PAI lives under `WORKSPACES/<repo-id>/`.

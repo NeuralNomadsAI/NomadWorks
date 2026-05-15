@@ -1,0 +1,23 @@
+scope: module
+parent: ../codemap.yml
+sources_of_truth:
+  - path: README.md
+    description: Policy bundle overview.
+  - path: definition-of-ready.md
+    description: Definition of Ready policy.
+  - path: definition-of-done.md
+    description: Definition of Done policy.
+  - path: development-guidelines.md
+    description: Development policy.
+  - path: documentation-guidelines.md
+    description: Documentation policy.
+  - path: git-commit-messaging.md
+    description: Commit message policy.
+  - path: product-guidelines.md
+    description: Product guidance policy.
+  - path: testing-guidelines.md
+    description: Testing policy.
+  - path: ui-ux-guidelines.md
+    description: UI/UX policy.
+commands:
+  - npm test

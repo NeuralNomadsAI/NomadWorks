@@ -91,28 +91,93 @@ function globalPaiLearningsDir(options = {}) {
   return path.join(globalPaiDir(options), "LEARNINGS");
 }
 
-function workspaceSyncRoot(syncRoot, worktree) {
-  return path.join(syncRoot, "WORKSPACES", memoryRepoId(worktree));
+function workspaceSyncRoot(syncRoot, worktree, repoCfg = {}) {
+  return path.join(syncRoot, "WORKSPACES", memoryRepoId(worktree, repoCfg));
 }
 
-function workspacePaiDirFromRoot(paiRoot, worktree) {
-  return path.join(paiRoot, "WORKSPACES", memoryRepoId(worktree));
+function workspacePaiDirFromRoot(paiRoot, worktree, repoCfg = {}) {
+  return path.join(paiRoot, "WORKSPACES", memoryRepoId(worktree, repoCfg));
 }
 
-function workspacePaiMemoryDirFromRoot(paiRoot, worktree) {
-  return path.join(workspacePaiDirFromRoot(paiRoot, worktree), "MEMORY");
+function workspacePaiMemoryDirFromRoot(paiRoot, worktree, repoCfg = {}) {
+  return path.join(workspacePaiDirFromRoot(paiRoot, worktree, repoCfg), "MEMORY");
 }
 
-function workspacePaiSessionsDirFromRoot(paiRoot, worktree) {
-  return path.join(workspacePaiDirFromRoot(paiRoot, worktree), "SESSIONS");
+function workspacePaiSessionsDirFromRoot(paiRoot, worktree, repoCfg = {}) {
+  return path.join(workspacePaiDirFromRoot(paiRoot, worktree, repoCfg), "SESSIONS");
 }
 
 function legacyRepoAgentsDir(worktree) {
   return path.join(legacyNomadworksDir(worktree), "nomadworks", "agents");
 }
 
-function memoryRepoId(worktree) {
-  return path.basename(worktree).toLowerCase().replace(/[^a-z0-9._-]+/g, "-") || "repository";
+function sanitizeWorkspaceId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.git$/i, "")
+    .replace(/[^a-z0-9._/-]+/g, "-")
+    .replace(/[\\/]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 160) || "repository";
+}
+
+function gitProbe(worktree, args) {
+  const result = spawnSync("git", args, { cwd: worktree, encoding: "utf8", shell: false });
+  if (result.error || result.status !== 0) return "";
+  return String(result.stdout || "").trim();
+}
+
+function normalizeGitRemoteIdentity(remoteUrl) {
+  const trimmed = String(remoteUrl || "").trim();
+  if (!trimmed) return "";
+  const scpLike = trimmed.match(/^(?:[^@]+@)?([^:]+):(.+)$/);
+  if (scpLike && !trimmed.includes("://")) return sanitizeWorkspaceId(`${scpLike[1]}/${scpLike[2]}`);
+  try {
+    const parsed = new URL(trimmed);
+    return sanitizeWorkspaceId(`${parsed.hostname}${parsed.pathname}`);
+  } catch {
+    return sanitizeWorkspaceId(trimmed);
+  }
+}
+
+function packageRepositoryIdentity(worktree) {
+  const packagePath = path.join(worktree, "package.json");
+  if (!fs.existsSync(packagePath)) return "";
+  try {
+    const packageData = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+    const repository = typeof packageData.repository === "string"
+      ? packageData.repository
+      : packageData.repository?.url;
+    return normalizeGitRemoteIdentity(repository);
+  } catch {
+    return "";
+  }
+}
+
+function memoryRepoId(worktree, repoCfg = {}) {
+  const configuredId = repoCfg.pai?.workspace?.id;
+  if (typeof configuredId === "string" && configuredId.trim()) return sanitizeWorkspaceId(configuredId);
+
+  const originRemote = gitProbe(worktree, ["config", "--get", "remote.origin.url"]);
+  const remoteIdentity = normalizeGitRemoteIdentity(originRemote);
+  if (remoteIdentity) return remoteIdentity;
+
+  const firstRemote = gitProbe(worktree, ["remote"])
+    .split(/\r?\n/)
+    .map(remote => remote.trim())
+    .filter(Boolean)[0];
+  if (firstRemote) {
+    const firstRemoteUrl = gitProbe(worktree, ["config", "--get", `remote.${firstRemote}.url`]);
+    const firstRemoteIdentity = normalizeGitRemoteIdentity(firstRemoteUrl);
+    if (firstRemoteIdentity) return firstRemoteIdentity;
+  }
+
+  const packageIdentity = packageRepositoryIdentity(worktree);
+  if (packageIdentity) return packageIdentity;
+
+  const topLevel = gitProbe(worktree, ["rev-parse", "--show-toplevel"]);
+  return sanitizeWorkspaceId(topLevel ? path.basename(topLevel) : path.basename(worktree));
 }
 
 function resolveConfiguredPaiRoot(worktree, repoCfg, options = {}, args = {}) {
@@ -131,7 +196,7 @@ function resolveConfiguredPaiRoot(worktree, repoCfg, options = {}, args = {}) {
 }
 
 function resolveWorkspaceExchangeRoot(worktree, repoCfg, options = {}, args = {}) {
-  return workspaceSyncRoot(resolveConfiguredPaiRoot(worktree, repoCfg, options, args), worktree);
+  return workspaceSyncRoot(resolveConfiguredPaiRoot(worktree, repoCfg, options, args), worktree, repoCfg);
 }
 
 function shouldScaffoldPaiOnLoad(repoCfg, options = {}) {
@@ -195,25 +260,32 @@ function runOpenCodeCommand(command, commandArgs, worktree) {
   return result.stdout || "";
 }
 
+function assertGitBackedPaiRoot(paiRoot) {
+  if (!fs.existsSync(path.join(paiRoot, ".git"))) throw new Error(`PAI root is not an existing Git repository: ${paiRoot}`);
+}
+
 async function exportOpenCodeSessions(worktree, repoCfg, options = {}, args = {}) {
   const sessionIds = parseSessionIds(args.session_ids);
   if (sessionIds.length === 0 && args.current_session_id) sessionIds.push(args.current_session_id);
   if (sessionIds.length === 0) throw new Error("Provide at least one session ID in session_ids, or call this tool from an OpenCode session context.");
 
-  const targetRoot = resolveWorkspaceExchangeRoot(worktree, repoCfg, options, args);
+  const paiRoot = resolveConfiguredPaiRoot(worktree, repoCfg, options, args);
+  assertGitBackedPaiRoot(paiRoot);
+  const targetRoot = workspaceSyncRoot(paiRoot, worktree, repoCfg);
   if (!fs.existsSync(targetRoot)) fs.mkdirSync(targetRoot, { recursive: true });
 
   const manifestPath = path.join(targetRoot, "manifest.json");
   const manifest = readManifest(manifestPath, {
     version: 1,
-    repository: path.basename(worktree),
-    repository_id: memoryRepoId(worktree),
+    repository: memoryRepoId(worktree, repoCfg),
+    repository_id: memoryRepoId(worktree, repoCfg),
     exported_at: new Date().toISOString(),
     files: [],
     skipped_sensitive_files: []
   });
 
   const command = opencodeCommand(repoCfg, args);
+  const rawExport = args.raw_export === true;
   const exported = [];
   const failed = [];
   const manifestFiles = new Set(Array.isArray(manifest.files) ? manifest.files : []);
@@ -222,7 +294,8 @@ async function exportOpenCodeSessions(worktree, repoCfg, options = {}, args = {}
     try {
       const relativePath = sessionTranscriptRelativePath(sessionId).replace(/\\/g, "/");
       const targetPath = path.join(targetRoot, relativePath);
-      const content = runOpenCodeCommand(command, ["export", sessionId], worktree);
+      const exportArgs = rawExport ? ["export", sessionId] : ["export", "--sanitize", sessionId];
+      const content = runOpenCodeCommand(command, exportArgs, worktree);
       if (SECRET_PATTERNS.some(pattern => pattern.test(content))) {
         manifest.skipped_sensitive_files ??= [];
         manifest.skipped_sensitive_files.push(relativePath);
@@ -234,7 +307,7 @@ async function exportOpenCodeSessions(worktree, repoCfg, options = {}, args = {}
       if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
       fs.writeFileSync(targetPath, content, "utf8");
       manifestFiles.add(relativePath);
-      exported.push({ session_id: sessionId, file: relativePath, format: "opencode-export-json" });
+      exported.push({ session_id: sessionId, file: relativePath, format: "opencode-export-json", sanitized: !rawExport });
     } catch (e) {
       failed.push({ session_id: sessionId, reason: e.message });
     }
@@ -252,7 +325,9 @@ async function exportOpenCodeSessions(worktree, repoCfg, options = {}, args = {}
 }
 
 function importOpenCodeSessions(worktree, repoCfg, options = {}, args = {}) {
-  const sourceRoot = resolveWorkspaceExchangeRoot(worktree, repoCfg, options, args);
+  const paiRoot = resolveConfiguredPaiRoot(worktree, repoCfg, options, args);
+  assertGitBackedPaiRoot(paiRoot);
+  const sourceRoot = workspaceSyncRoot(paiRoot, worktree, repoCfg);
   const manifestPath = path.join(sourceRoot, "manifest.json");
   if (!fs.existsSync(manifestPath)) throw new Error(`PAI workspace manifest not found at ${manifestPath}`);
 
@@ -303,7 +378,7 @@ function importOpenCodeSessions(worktree, repoCfg, options = {}, args = {}) {
 
 function syncStatus(worktree, repoCfg, options, args = {}) {
   const root = resolveConfiguredPaiRoot(worktree, repoCfg, options, args);
-  const workspaceManifestPath = path.join(workspaceSyncRoot(root, worktree), SYNC_MANIFEST);
+  const workspaceManifestPath = path.join(workspaceSyncRoot(root, worktree, repoCfg), SYNC_MANIFEST);
   const readManifest = (filePath) => {
     if (!fs.existsSync(filePath)) return null;
     try {
@@ -316,7 +391,7 @@ function syncStatus(worktree, repoCfg, options, args = {}) {
     pai_root: root,
     is_git_repository: fs.existsSync(path.join(root, ".git")),
     git_status: fs.existsSync(path.join(root, ".git")) ? runGitStatus(root) : null,
-    workspace_root: workspaceSyncRoot(root, worktree),
+    workspace_root: workspaceSyncRoot(root, worktree, repoCfg),
     workspace_manifest: readManifest(workspaceManifestPath)
   };
 }
@@ -381,9 +456,9 @@ function resolvePaiContextFiles(worktree, repoCfg, options = {}) {
     .map(file => file.trim())
     .map(relativeFile => {
       const normalized = relativeFile.replace(/^[\\/]+/, "");
-      const workspaceRoot = workspacePaiDirFromRoot(paiRoot, worktree);
+      const workspaceRoot = workspacePaiDirFromRoot(paiRoot, worktree, repoCfg);
       const absolutePath = path.join(workspaceRoot, normalized);
-      return { relativePath: path.join("WORKSPACES", memoryRepoId(worktree), normalized).replace(/\\/g, "/"), absolutePath, root: workspaceRoot };
+      return { relativePath: path.join("WORKSPACES", memoryRepoId(worktree, repoCfg), normalized).replace(/\\/g, "/"), absolutePath, root: workspaceRoot };
     }));
   }
 
@@ -444,23 +519,23 @@ function scaffoldGlobalPai(options = {}) {
   ].join("\n"));
 }
 
-function scaffoldWorkspacePai(paiRoot, worktree) {
-  const workspaceRoot = workspacePaiDirFromRoot(paiRoot, worktree);
+function scaffoldWorkspacePai(paiRoot, worktree, repoCfg = {}) {
+  const workspaceRoot = workspacePaiDirFromRoot(paiRoot, worktree, repoCfg);
   ensureReadmeFile(workspaceRoot, [
-    `# Workspace PAI: ${path.basename(worktree)}`,
+    `# Workspace PAI: ${memoryRepoId(worktree, repoCfg)}`,
     "",
     "Project-specific AI memory stored outside the project repository.",
     "",
     "Repository truth still lives in the project repo; this folder is auxiliary AI memory.",
     ""
   ].join("\n"));
-  ensureReadmeFile(workspacePaiMemoryDirFromRoot(paiRoot, worktree), [
+  ensureReadmeFile(workspacePaiMemoryDirFromRoot(paiRoot, worktree, repoCfg), [
     "# Workspace Memory",
     "",
     "Durable project-specific learnings, decisions, and context for NomadWorks agents.",
     ""
   ].join("\n"));
-  ensureReadmeFile(workspacePaiSessionsDirFromRoot(paiRoot, worktree), [
+  ensureReadmeFile(workspacePaiSessionsDirFromRoot(paiRoot, worktree, repoCfg), [
     "# OpenCode Sessions",
     "",
     "Native `opencode export` JSON files for sessions related to this workspace.",
@@ -1207,8 +1282,9 @@ export default async function NomadWorksPlugin(input, options = {}) {
   if (shouldScaffoldPaiOnLoad(repoCfg, pluginOptions)) {
     try {
       const paiRoot = resolveConfiguredPaiRoot(worktree, repoCfg, pluginOptions, {});
+      assertGitBackedPaiRoot(paiRoot);
       scaffoldGlobalPai({ ...pluginOptions, pai_root: paiRoot });
-      scaffoldWorkspacePai(paiRoot, worktree);
+      scaffoldWorkspacePai(paiRoot, worktree, repoCfg);
     } catch (e) {
       console.error(`[NomadWorks] PAI scaffolding skipped for ${worktree}:`, e);
     }
@@ -1556,7 +1632,8 @@ export default async function NomadWorksPlugin(input, options = {}) {
       args: {
         session_ids: tool.schema.string().describe("Optional OpenCode session IDs, separated by commas or whitespace. Uses the current session when empty.").optional(),
         repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, plugin pai_root, or plugin sync_repo_path when empty.").optional(),
-        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.").optional()
+        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.").optional(),
+        raw_export: tool.schema.boolean().describe("Explicit opt-in to run raw 'opencode export <sessionId>' instead of the default sanitized export.").optional()
       },
       async execute(args, context) {
         try {

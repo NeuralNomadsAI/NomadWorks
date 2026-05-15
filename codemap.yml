@@ -1,0 +1,29 @@
+scope: repo
+modules:
+  - path: src
+    description: Plugin runtime source and validation logic.
+  - path: scripts
+    description: Build and release helper scripts.
+  - path: tests
+    description: Jest regression coverage.
+  - path: agents
+    description: Bundled NomadWorks agent prompt definitions.
+  - path: policies
+    description: Bundled shared policy documents.
+entrypoints:
+  - path: package.json
+    description: Package metadata, scripts, and published entrypoint declaration.
+sources_of_truth:
+  - path: package-lock.json
+    description: Locked npm dependency graph.
+  - path: README.md
+    description: Public package overview.
+  - path: Agents_Common.md
+    description: Shared prompt content included by bundled agents.
+invariants:
+  - Root CodeMap describes only immediate repository children; subdirectory internals belong to local codemap.yml files.
+  - Runtime state under hidden tool-owned directories is not indexed here.
+commands:
+  - npm test
+  - npm run build
+  - npm run release:check

@@ -1,4 +1,9 @@
-import { nomadworks_validate_logic } from "../src/validate_logic.js";
+import {
+  isHiddenTree,
+  isOperationalPath,
+  isPlaceholderExemptPath,
+  nomadworks_validate_logic
+} from "../src/validate_logic.js";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -160,6 +165,36 @@ describe("nomadworks_validate", () => {
 
     const result = await nomadworks_validate_logic(root);
     expect(result.ok).toBe(true);
+  });
+
+  test("Does not exempt placeholder paths that only prefix-match tasks/done", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "done-old": {
+          "archived-task.md": "# Not Really Done\n\n[To be defined]"
+        },
+        "done_backup": {
+          "backup-task.md": "# Backup\n\n[Insert details]"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      expect.stringContaining("tasks" + path.sep + "done-old" + path.sep + "archived-task.md"),
+      expect.stringContaining("tasks" + path.sep + "done_backup" + path.sep + "backup-task.md")
+    ]));
+  });
+
+  test("Classifies Windows-style backslash relative paths consistently", () => {
+    expect(isOperationalPath("docs\\core")).toBe(true);
+    expect(isPlaceholderExemptPath("tasks\\done")).toBe(true);
+    expect(isPlaceholderExemptPath("tasks\\done\\archive\\task.md")).toBe(true);
+    expect(isPlaceholderExemptPath("tasks\\done-old\\task.md")).toBe(false);
+    expect(isPlaceholderExemptPath("tasks\\done_backup\\task.md")).toBe(false);
+    expect(isHiddenTree(".github\\workflows")).toBe(true);
   });
 
   test("Ignores hidden tool-owned directory trees like .github/workflows", async () => {

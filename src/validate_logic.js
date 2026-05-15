@@ -3,6 +3,24 @@ import path from "node:path";
 import YAML from "yaml";
 import ignore from "ignore";
 
+export const toPosixRelativePath = (relPath) => relPath.replaceAll("\\", "/");
+
+export const isOperationalPath = (relPath) => {
+  const normalizedRelPath = toPosixRelativePath(relPath);
+  const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
+  return operationalFolders.some(folder => normalizedRelPath === folder || normalizedRelPath.startsWith(`${folder}/`));
+};
+
+export const isPlaceholderExemptPath = (relPath) => {
+  const normalizedRelPath = toPosixRelativePath(relPath);
+  return normalizedRelPath === "tasks/done" || normalizedRelPath.startsWith("tasks/done/");
+};
+
+export const isHiddenTree = (relPath) => {
+  if (!relPath) return false;
+  return toPosixRelativePath(relPath).split("/").some(part => part.startsWith("."));
+};
+
 export async function nomadworks_validate_logic(worktree) {
   const rootCodemapPath = path.join(worktree, "codemap.yml");
   if (!fs.existsSync(rootCodemapPath)) {
@@ -24,19 +42,6 @@ export async function nomadworks_validate_logic(worktree) {
     ".js", ".ts", ".tsx", ".jsx", ".dart", ".py", ".go", ".rs", ".java", ".c", ".cpp", ".cs", 
     ".php", ".rb", ".swift", ".kt", ".m", ".sh", ".sql", ".yaml", ".yml", ".json", ".md"
   ];
-
-  const toPosixRelativePath = (relPath) => relPath.replaceAll("\\", "/");
-
-  const isOperationalPath = (relPath) => {
-    const normalizedRelPath = toPosixRelativePath(relPath);
-    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
-    return operationalFolders.some(folder => normalizedRelPath === folder || normalizedRelPath.startsWith(`${folder}/`));
-  };
-
-  const isHiddenTree = (relPath) => {
-    if (!relPath) return false;
-    return relPath.split(path.sep).some(part => part.startsWith("."));
-  };
 
   const isSourceDir = (dirPath) => {
     const items = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -133,7 +138,7 @@ export async function nomadworks_validate_logic(worktree) {
     const items = fs.readdirSync(dir, { withFileTypes: true });
 
     // Check for placeholders in any .md file (except in tasks/done)
-    if (!toPosixRelativePath(relDir).startsWith("tasks/done")) {
+    if (!isPlaceholderExemptPath(relDir)) {
       for (const item of items) {
         if (item.isFile() && item.name.endsWith(".md")) {
           const content = fs.readFileSync(path.join(dir, item.name), "utf8");

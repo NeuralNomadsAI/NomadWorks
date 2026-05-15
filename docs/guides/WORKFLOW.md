@@ -99,7 +99,7 @@ When Drive-To-Done is explicitly active, PMA or Workflow Runner continues the cu
 
 - `DONE`: Definition of Done is satisfied and closure authority approves the result.
 - `HARD BLOCKER`: safe progress is impossible without a specific missing input or external fix.
-- `CYCLE LIMIT`: the configured continuation limit is reached before closure.
+- `CYCLE LIMIT`: the agreed continuation limit is reached before closure.
 
 Drive-To-Done uses existing task files, acceptance criteria, evidence, and registries. It is not a separate workflow model.
 

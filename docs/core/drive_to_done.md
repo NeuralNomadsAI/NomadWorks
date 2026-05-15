@@ -4,11 +4,11 @@ Drive-To-Done is an explicit NomadWorks execution discipline. It does not replac
 
 ## Terminal States
 
-When Drive-To-Done is active, PMA or Workflow Runner continues the current task lifecycle until exactly one terminal state is reached:
+When Drive-To-Done is explicitly requested by the user, PMA, or repository workflow, PMA or Workflow Runner continues the current task lifecycle until exactly one terminal state is reached:
 
 - `DONE`: Definition of Done is satisfied, evidence is recorded, required docs/registries are updated, and closure authority has approved the result.
 - `HARD BLOCKER`: a specific missing input, failed dependency, rejected verification result, or unresolved contradiction prevents further safe progress.
-- `CYCLE LIMIT`: the configured continuation limit is reached before `DONE` or `HARD BLOCKER`.
+- `CYCLE LIMIT`: the agreed continuation limit is reached before `DONE` or `HARD BLOCKER`.
 
 ## Operating Rules
 
@@ -20,7 +20,7 @@ When Drive-To-Done is active, PMA or Workflow Runner continues the current task 
 
 ## Cycle Limit
 
-The default continuation limit is `drive_to_done.max_cycles` from `.nomadworks/nomadworks.yaml`. If absent, use `5`.
+The default continuation limit is 5 cycles unless the user or PMA explicitly sets a different limit for the current task.
 
 When the limit is reached, report:
 

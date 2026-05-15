@@ -1,0 +1,33 @@
+scope: repo
+modules:
+  - path: src
+    description: "Runtime plugin implementation and validation logic."
+  - path: scripts
+    description: "Build and release helper scripts."
+  - path: tests
+    description: "Jest regression tests for plugin behavior and validation logic."
+  - path: agents
+    description: "Bundled NomadWorks agent prompt definitions."
+  - path: policies
+    description: "Bundled default policy documents."
+sources_of_truth:
+  - path: package.json
+    description: "Package metadata, scripts, dependencies, and publish file allowlist."
+  - path: package-lock.json
+    description: "Locked npm dependency graph."
+  - path: README.md
+    description: "Repository overview and usage entry documentation."
+  - path: Agents_Common.md
+    description: "Shared bundled agent guidance included by agent prompts."
+  - path: .gitignore
+    description: "Repository ignore policy for generated and dependency files."
+commands:
+  - command: npm test
+    description: "Run the Jest test suite."
+  - command: npm run build
+    description: "Build distributable files into dist/."
+  - command: npm pack --dry-run
+    description: "Verify package contents before publishing."
+invariants:
+  - "Do not ignore repository-local .nomadworks customization surfaces; only generated/runtime subpaths should be ignored."
+  - "Generated dist output must be produced from src via npm run build."

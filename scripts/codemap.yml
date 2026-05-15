@@ -1,0 +1,12 @@
+scope: module
+parent: ../codemap.yml
+entrypoints:
+  - path: build.js
+    description: "Copies source files into dist for package distribution."
+  - path: resolve-release-version.js
+    description: "Determines release version metadata for release automation."
+commands:
+  - command: npm run build
+    description: "Execute the package build script."
+invariants:
+  - "Build output belongs in dist/ and should remain reproducible from source files."

@@ -1,0 +1,16 @@
+scope: module
+parent: ../codemap.yml
+entrypoints:
+  - path: index.js
+    description: "OpenCode plugin entrypoint, tool registration, onboarding, agent loading, and workflow helpers."
+internals:
+  - path: validate_logic.js
+    description: "CodeMap and workflow artifact validation implementation used by the plugin and tests."
+commands:
+  - command: npm test
+    description: "Run regression coverage for plugin and validation behavior."
+  - command: npm run build
+    description: "Build src files into dist/."
+invariants:
+  - "Auto-onboarding must not overwrite existing repository NomadWorks configuration."
+  - "Filesystem scaffolding must respect onboarding mode and git-only auto-init settings."

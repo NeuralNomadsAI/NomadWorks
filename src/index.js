@@ -875,8 +875,10 @@ export default async function NomadWorksPlugin(input, options = {}) {
     }
   }
   repoCfg = applyTeamConfigRules(repoCfg);
-  scaffoldNomadworksReadmes(worktree);
-  syncGeneratedPolicies(worktree, repoCfg);
+  if (fs.existsSync(configPath)) {
+    scaffoldNomadworksReadmes(worktree);
+    syncGeneratedPolicies(worktree, repoCfg);
+  }
   const operatingTeamMode = getOperatingTeamMode(repoCfg);
 
   const startAndMonitorWorkflow = async (sessionId, pmaSessionId, initialText, taskPath = null) => {

@@ -2,4 +2,5 @@ dist/
 node_modules/
 .DS_Store
 *.tgz
-.nomadworks/
+.nomadworks/runtime/
+.nomadworks/generated/

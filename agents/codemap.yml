@@ -1,0 +1,21 @@
+scope: module
+parent: ../codemap.yml
+sources_of_truth:
+  - path: business_analyst.md
+    description: "Bundled Business Analyst agent prompt."
+  - path: developer.md
+    description: "Bundled Developer agent prompt."
+  - path: product_manager.md
+    description: "Bundled Product Manager agent prompt."
+  - path: qa_engineer.md
+    description: "Bundled QA Engineer agent prompt."
+  - path: tech_lead.md
+    description: "Bundled Tech Lead agent prompt."
+  - path: technical_architect.md
+    description: "Bundled Technical Architect agent prompt."
+  - path: ui_ux_designer.md
+    description: "Bundled UI/UX Designer agent prompt."
+  - path: workflow_runner.md
+    description: "Bundled Workflow Runner agent prompt."
+invariants:
+  - "Agent prompt files are bundled package inputs and must remain listed in package contents."

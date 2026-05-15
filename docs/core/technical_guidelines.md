@@ -3,12 +3,12 @@
 This document defines the project's tech stack and architectural patterns.
 
 ## Tech Stack
-- **Language:** [To be defined]
-- **Runtime/Framework:** [To be defined]
-- **Frontend (if applicable):** [To be defined]
-- **State Management:** [To be defined]
-- **Testing Framework:** [To be defined]
-- **Database/Storage:** [To be defined]
+- **Language:** JavaScript (ES modules).
+- **Runtime/Framework:** Node.js package exposing an OpenCode plugin via `@opencode-ai/plugin`.
+- **Frontend (if applicable):** Not applicable; this package provides CLI/plugin workflow tooling.
+- **State Management:** Repository-local YAML/Markdown files plus `.nomadworks/runtime/` for generated session state.
+- **Testing Framework:** Jest, run through `npm test`.
+- **Database/Storage:** Filesystem-based configuration, generated artifacts, task records, and documentation.
 
 ## Architectural Patterns
 - **Feature-First:** Organize code into distinct features or modules.

@@ -1,0 +1,23 @@
+scope: module
+parent: ../codemap.yml
+sources_of_truth:
+  - path: README.md
+    description: "Policy directory overview."
+  - path: definition-of-done.md
+    description: "Bundled Definition of Done policy."
+  - path: definition-of-ready.md
+    description: "Bundled Definition of Ready policy."
+  - path: development-guidelines.md
+    description: "Bundled development policy."
+  - path: documentation-guidelines.md
+    description: "Bundled documentation policy."
+  - path: git-commit-messaging.md
+    description: "Bundled git commit messaging policy."
+  - path: product-guidelines.md
+    description: "Bundled product policy."
+  - path: testing-guidelines.md
+    description: "Bundled testing policy."
+  - path: ui-ux-guidelines.md
+    description: "Bundled UI/UX policy."
+invariants:
+  - "Policies in this directory are bundled defaults; repository overrides belong under .nomadworks/policies/."

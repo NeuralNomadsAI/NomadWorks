@@ -1,0 +1,12 @@
+scope: module
+parent: ../codemap.yml
+entrypoints:
+  - path: plugin.test.js
+    description: "Regression coverage for plugin onboarding and option resolution behavior."
+  - path: validate.test.js
+    description: "Regression coverage for NomadWorks validation logic."
+commands:
+  - command: npm test
+    description: "Run all Jest tests."
+invariants:
+  - "Safety regressions must cover onboarding opt-out, git-only defaults, and existing config preservation."

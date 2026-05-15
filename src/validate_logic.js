@@ -25,6 +25,14 @@ export async function nomadworks_validate_logic(worktree) {
     ".php", ".rb", ".swift", ".kt", ".m", ".sh", ".sql", ".yaml", ".yml", ".json", ".md"
   ];
 
+  const toPosixRelativePath = (relPath) => relPath.replaceAll("\\", "/");
+
+  const isOperationalPath = (relPath) => {
+    const normalizedRelPath = toPosixRelativePath(relPath);
+    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
+    return operationalFolders.some(folder => normalizedRelPath === folder || normalizedRelPath.startsWith(`${folder}/`));
+  };
+
   const isHiddenTree = (relPath) => {
     if (!relPath) return false;
     return relPath.split(path.sep).some(part => part.startsWith("."));
@@ -86,8 +94,7 @@ export async function nomadworks_validate_logic(worktree) {
 
     // Shadow File Check: Ensure all source files in this directory are indexed (Module scope only)
     const relDir = path.relative(worktree, dir);
-    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
-    const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));
+    const isOperational = isOperationalPath(relDir);
 
     if (map.scope === "module" && !isOperational) {
       const items = fs.readdirSync(dir, { withFileTypes: true });
@@ -126,7 +133,7 @@ export async function nomadworks_validate_logic(worktree) {
     const items = fs.readdirSync(dir, { withFileTypes: true });
 
     // Check for placeholders in any .md file (except in tasks/done)
-    if (!relDir.startsWith("tasks/done")) {
+    if (!toPosixRelativePath(relDir).startsWith("tasks/done")) {
       for (const item of items) {
         if (item.isFile() && item.name.endsWith(".md")) {
           const content = fs.readFileSync(path.join(dir, item.name), "utf8");
@@ -139,8 +146,7 @@ export async function nomadworks_validate_logic(worktree) {
     }
 
     // Exclusion list for mandatory codemaps (operational folders)
-    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
-    const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));
+    const isOperational = isOperationalPath(relDir);
 
     if (relDir !== "" && !hasCodemap && isSourceDir(dir) && !isOperational) {
       errors.push(`Missing CodeMap: Directory '${relDir}' contains source but has no codemap.yml.`);

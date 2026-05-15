@@ -105,6 +105,63 @@ describe("nomadworks_validate", () => {
     expect(result.ok).toBe(true); // Should ignore .md files in operational folders
   });
 
+  test("Exempts nested operational folders from mandatory codemap checks", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "todo": {
+          "001-task.md": "# Task content"
+        }
+      },
+      "docs": {
+        "core": {
+          "guide.md": "# Guide"
+        }
+      },
+      "templates": {
+        "task-template.md": "# Template"
+      },
+      "dist": {
+        "index.js": "export default {};"
+      },
+      "evidences": {
+        "run.md": "# Evidence"
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
+  test("Exempts nested operational folders from shadow file checks when codemaps exist", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo\nmodules: [{path: tasks}]",
+      "tasks": {
+        "todo": {
+          "codemap.yml": "scope: module\nparent: ../codemap.yml\nentrypoints: []",
+          "unindexed_task.md": "# Task content"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
+  test("Allows placeholders under nested tasks/done registry paths", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "done": {
+          "archived-task.md": "# Done\n\n[To be defined]"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
   test("Ignores hidden tool-owned directory trees like .github/workflows", async () => {
     const root = createTestEnv({
       "codemap.yml": "scope: repo",

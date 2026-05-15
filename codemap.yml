@@ -1,5 +1,5 @@
 scope: repo
-name: {{projectName}}
+name: NomadWorks
 purpose: >
   Repository navigation index. Points to current-state
   product specs, process docs, and module entrypoints.
@@ -7,7 +7,9 @@ purpose: >
 code_roots:
   - src/
   - agents/
-  - docs/
+  - policies/
+  - scripts/
+  - tests/
 
 links:
   - title: Global Context
@@ -24,7 +26,18 @@ links:
 
 entrypoints: []
 commands:
-  test: "echo 'No global test command defined'"
-  lint: "echo 'No global lint command defined'"
+  test: "npm test"
+  build: "npm run build"
+  release_check: "npm run release:check"
 
-modules: []
+modules:
+  - path: agents
+    summary: "Bundled NomadWorks agent prompt definitions."
+  - path: policies
+    summary: "Bundled repository policy documents included by agent prompts."
+  - path: scripts
+    summary: "Build and release utility scripts."
+  - path: src
+    summary: "OpenCode plugin source and validation logic."
+  - path: tests
+    summary: "Jest regression tests for plugin behavior and validation."

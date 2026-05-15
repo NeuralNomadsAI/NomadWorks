@@ -1,0 +1,11 @@
+scope: module
+parent: ../codemap.yml
+name: scripts
+purpose: Repository build and release helper scripts.
+entrypoints:
+  - path: build.js
+    description: Copies source JavaScript files into dist for package builds.
+  - path: resolve-release-version.js
+    description: Resolves npm release versions for CI release workflows.
+commands:
+  build: "npm run build"

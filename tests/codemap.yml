@@ -1,0 +1,9 @@
+scope: module
+parent: ../codemap.yml
+name: tests
+purpose: Jest regression coverage for NomadWorks plugin behavior.
+entrypoints:
+  - path: validate.test.js
+    description: Validation logic regression tests.
+commands:
+  test: "npm test"

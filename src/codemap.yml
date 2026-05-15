@@ -1,0 +1,13 @@
+scope: module
+parent: ../codemap.yml
+name: src
+purpose: OpenCode plugin source for NomadWorks runtime tools and validation.
+entrypoints:
+  - path: index.js
+    description: Plugin entrypoint exporting the NomadWorks OpenCode plugin and tool registrations.
+internals:
+  - path: validate_logic.js
+    description: Shared CodeMap, placeholder, and repository validation implementation.
+commands:
+  test: "npm test -- tests/validate.test.js"
+  build: "npm run build"

@@ -1,0 +1,26 @@
+scope: module
+parent: ../codemap.yml
+name: policies
+purpose: Bundled policy documents that can be included by agent prompts or extracted for repository customization.
+entrypoints:
+  - path: README.md
+    description: Policy include overview.
+internals:
+  - path: definition-of-done.md
+    description: Definition of Done policy.
+  - path: definition-of-ready.md
+    description: Definition of Ready policy.
+  - path: development-guidelines.md
+    description: Development policy defaults.
+  - path: documentation-guidelines.md
+    description: Documentation policy defaults.
+  - path: git-commit-messaging.md
+    description: Commit message policy.
+  - path: product-guidelines.md
+    description: Product policy defaults.
+  - path: testing-guidelines.md
+    description: Testing policy defaults.
+  - path: ui-ux-guidelines.md
+    description: UI and UX policy defaults.
+commands:
+  test: "npm test"

@@ -3,12 +3,12 @@
 This document defines the project's tech stack and architectural patterns.
 
 ## Tech Stack
-- **Language:** [To be defined]
-- **Runtime/Framework:** [To be defined]
-- **Frontend (if applicable):** [To be defined]
-- **State Management:** [To be defined]
-- **Testing Framework:** [To be defined]
-- **Database/Storage:** [To be defined]
+- **Language:** JavaScript (ES modules). TypeScript is available for tooling types, but package builds copy JavaScript sources without a TypeScript compile step.
+- **Runtime/Framework:** Node.js package for the OpenCode plugin runtime.
+- **Frontend (if applicable):** Not applicable; this repository does not ship a browser or native UI.
+- **State Management:** YAML and JSON files for repository configuration, generated OpenCode configuration, task registries, SCR registries, and optional PAI/session sync manifests.
+- **Testing Framework:** Jest via `npm test`.
+- **Database/Storage:** Filesystem-backed repository artifacts and optional external PAI sync repositories; no application database is used.
 
 ## Architectural Patterns
 - **Feature-First:** Organize code into distinct features or modules.

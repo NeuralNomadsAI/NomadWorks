@@ -1,0 +1,24 @@
+scope: module
+parent: ../codemap.yml
+name: agents
+purpose: Bundled agent definitions shipped with the NomadWorks plugin.
+entrypoints:
+  - path: product_manager.md
+    description: Product Manager Agent definition and orchestration prompt.
+  - path: workflow_runner.md
+    description: Workflow Runner agent definition for full-team delegated execution.
+internals:
+  - path: business_analyst.md
+    description: Business Analyst agent definition.
+  - path: developer.md
+    description: Developer agent definition.
+  - path: qa_engineer.md
+    description: QA Engineer agent definition.
+  - path: tech_lead.md
+    description: Tech Lead agent definition.
+  - path: technical_architect.md
+    description: Technical Architect agent definition.
+  - path: ui_ux_designer.md
+    description: UI/UX Designer agent definition.
+commands:
+  test: "npm test"

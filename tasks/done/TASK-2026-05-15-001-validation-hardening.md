@@ -199,6 +199,10 @@ Not applicable.
 - Documentation impact: technical guidance placeholders were replaced with concrete stack details; product documentation unchanged because this hardening does not alter product behavior, terminology, or feature inventory.
 - Open risks: current `nomadworks_validate` tool invocation in this same OpenCode process appears stale; a fresh plugin/runtime reload should verify the tool-level command against the updated built validation logic.
 
+## Product Manager: Closure Correction
+- Registry correction: after the final implementation commit completed, PMA replaced the placeholder `this commit` in `tasks/done.md` with the actual implementation commit hash `3f0d913`.
+- Reason: ensure the completed-task registry maps the task to a concrete commit hash for traceability.
+
 ### Developer Addendum - Post-Review Correction
 - Files changed: root `codemap.yml` commands now use real repository commands from `package.json`/`AGENTS.md` (`npm test`, `npm run build`, `npm run release:check`) and omit lint because no repository lint script exists; task metadata now reflects active Developer ownership/handoff (`status: in_progress`, `assigned_to: developer`, `handoff_from: product_manager`).
 - Verification commands/results:

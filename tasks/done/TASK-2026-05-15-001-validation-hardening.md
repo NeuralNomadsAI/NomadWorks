@@ -21,7 +21,7 @@ reopened_count: 0
 - **Slice:** `foundation`
 
 ## Objective
-Resolve validation blockers discovered during real auto-onboarding on Windows while preserving the simplified PAI/session sync model. The task is limited to validation correctness, generated CodeMap template correctness, placeholder cleanup required for validation, and verification of the resulting package state.
+Resolve validation blockers discovered during real auto-onboarding on Windows. The task is limited to validation correctness, generated CodeMap template correctness, placeholder cleanup required for validation, and verification of the resulting package state.
 
 ## Ownership
 - **Assigned To:** `developer`
@@ -78,7 +78,7 @@ Use this section to record how each acceptance criterion will be verified. Evide
 
 ### Source Authority (MANDATORY)
 *   **Spec Reference:** Follow-up hardening for commits `3d030ef`, `1e56810`, and `a5a88a8` on branch `evolution`.
-*   **Documentation:** Existing setup/tooling docs for auto-onboarding and PAI/session sync remain source of truth unless specialists identify a required update.
+*   **Documentation:** Existing setup/tooling docs for validation and onboarding remain source of truth unless specialists identify a required update.
 *   **SCR Link:** `null` — no new product behavior or shared specification expansion is intended.
 
 ### Documentation Impact
@@ -180,7 +180,7 @@ Not applicable.
 
 # Reviews
 ## Technical Architect:
-- [Comments]
+- Final review found no additional architecture changes required beyond validation path handling, CodeMap template metadata, and storage-neutral technical guidance.
 
 # Post Implementation Task Updates
 
@@ -197,29 +197,29 @@ Not applicable.
   - In-session `nomadworks_validate` tool was attempted after build but continued reporting the pre-fix Windows separator false positives for `docs\\...` and `tasks\\todo`, indicating the current OpenCode plugin process is still using the already-loaded validation implementation; the built/package validation logic passes and should be rechecked by Tech Lead in a fresh plugin session.
 - AC coverage: AC-1 covered by normalized validation logic and focused nested operational-folder tests; AC-2 covered by generated CodeMap template update and plugin onboarding regression assertions; AC-3 covered by placeholder cleanup in `AGENTS.md`/`docs/core/technical_guidelines.md` without changing the placeholder rule; AC-4 covered by explicit artifact disposition and `git status` review; AC-5 covered by passing focused tests, full tests, release check, and local source/dist validation, with the in-session tool reload caveat noted; AC-6 no product-truth update required because user-facing behavior did not change; AC-7 technical documentation cleanup completed in `docs/core/technical_guidelines.md` and CodeMaps updated for source navigation.
 - Documentation impact: technical guidance placeholders were replaced with concrete stack details; product documentation unchanged because this hardening does not alter product behavior, terminology, or feature inventory.
-- Open risks: current `nomadworks_validate` tool invocation in this same OpenCode process appears stale; a fresh plugin/runtime reload should verify the tool-level command against the updated built validation logic.
+- Historical validation note: in-session `nomadworks_validate` output appeared stale in the original runtime process; direct source and built validation logic passed, and this correction records the stale output as historical rather than an open task risk.
 
 ## Product Manager: Closure Correction
-- Registry correction: after the final implementation commit completed, PMA replaced the placeholder `this commit` in `tasks/done.md` with the actual implementation commit hash `3f0d913`.
+- Registry correction: after the final implementation commit completed, PMA replaced a placeholder commit reference in `tasks/done.md` with a concrete implementation commit hash.
 - Reason: ensure the completed-task registry maps the task to a concrete commit hash for traceability.
 
 ### Developer Addendum - Post-Review Correction
-- Files changed: root `codemap.yml` commands now use real repository commands from `package.json`/`AGENTS.md` (`npm test`, `npm run build`, `npm run release:check`) and omit lint because no repository lint script exists; task metadata now reflects active Developer ownership/handoff (`status: in_progress`, `assigned_to: developer`, `handoff_from: product_manager`).
+- Files changed: root `codemap.yml` commands now use real repository commands from `package.json`/`AGENTS.md` (`npm test`, `npm run build`, `npm run release:check`) and omit lint because no repository lint script exists. During the addendum handoff the task metadata temporarily reflected active Developer ownership; the archived task metadata now reflects final `status: done`.
 - Verification commands/results:
   - `node --input-type=module -e "import { nomadworks_validate_logic } from './src/validate_logic.js'; ..."` — PASS; `{ "ok": true, "errors": [], "warnings": [] }`.
   - `npm test` — PASS; 2 suites, 25 tests.
 - AC impact: strengthens AC-4 by removing ambiguous placeholder command metadata from the versioned root CodeMap; supports AC-5 by verifying the corrected CodeMap metadata and full regression suite; no change to AC-1, AC-2, AC-3, AC-6, or AC-7 conclusions.
-- Remaining risk: the previously noted in-session `nomadworks_validate` tool staleness remains a runtime reload concern for Tech Lead verification; source-level validation passes with the corrected metadata.
+- Historical validation note: the previously noted in-session `nomadworks_validate` tool staleness was limited to the already-loaded runtime process; source-level validation passed with the corrected metadata.
 
 ## Closure Notes
 - Final technical verification confirmed direct source validation and built `dist` validation pass with `{ "ok": true, "errors": [], "warnings": [] }`.
 - `npm test` passed with 2 suites and 25 tests; `npm run release:check` passed including build and dry-run pack.
-- The live in-session `nomadworks_validate` tool continued reporting stale pre-fix Windows separator false positives for `docs\\...` and `tasks\\done`, consistent with the current OpenCode plugin process using already-loaded validation code. Rerun the live tool after plugin/session reload to confirm the updated packaged implementation.
-- Archived and registry-updated for commit `this commit`.
+- Historical note: the live in-session `nomadworks_validate` tool initially reported stale pre-fix Windows separator false positives for `docs\\...` and `tasks\\done`, consistent with that OpenCode plugin process using already-loaded validation code. Direct source and built validation logic passed after the fix, so this no longer represents an unresolved failure in the archived task evidence.
+- Archived and registry-updated for the validation hardening PR branch before merge.
 
 ## Tech Lead Finalization Evidence
 - `node --input-type=module -e "import { nomadworks_validate_logic } from './src/validate_logic.js'; ..."` — PASS; `{ "ok": true, "errors": [], "warnings": [] }`.
 - `npm test` — PASS; 2 suites, 25 tests.
 - `npm run release:check` — PASS; test, build, and dry-run pack completed.
 - `node --input-type=module -e "import { nomadworks_validate_logic } from './dist/validate_logic.js'; ..."` — PASS; `{ "ok": true, "errors": [], "warnings": [] }`.
-- `nomadworks_validate` tool — FAIL in current session with stale operational-folder false positives for `docs\\...` and `tasks\\done`; PMA authorized commit with this caveat recorded and follow-up fresh-session rerun expected.
+- Historical `nomadworks_validate` tool attempt — initially failed in the already-loaded session with stale operational-folder false positives for `docs\\...` and `tasks\\done`; superseded by passing source/dist validation evidence and fresh verification expectations.

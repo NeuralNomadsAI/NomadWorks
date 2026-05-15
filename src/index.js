@@ -842,7 +842,11 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
 }
 
 export default async function NomadWorksPlugin(input, options = {}) {
-  const pluginOptions = input.options || input.config || options || {};
+  const pluginOptions = {
+    ...(options || {}),
+    ...(input.config || {}),
+    ...(input.options || {})
+  };
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = generatedAgentsDir(worktree);
   const configPath = resolveConfigPath(worktree);

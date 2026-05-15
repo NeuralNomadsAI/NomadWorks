@@ -29,4 +29,19 @@ describe("NomadWorks plugin auto-onboarding", () => {
     expect(generatedConfig.team_mode).toBe("mini");
     expect(generatedConfig.agents.product_manager.enabled).toBe(true);
   });
+
+  test("auto onboarding honors second-argument options when input options are empty", async () => {
+    const worktree = createEmptyGitWorktree();
+
+    await NomadWorksPlugin({ worktree, options: {} }, {
+      onboarding: "auto",
+      default_team_mode: "mini",
+      auto_init_git_repos_only: true
+    });
+
+    expect(fs.existsSync(path.join(worktree, ".nomadworks", "nomadworks.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(worktree, "codemap.yml"))).toBe(true);
+    const generatedConfig = YAML.parse(fs.readFileSync(path.join(worktree, ".nomadworks", "nomadworks.yaml"), "utf8"));
+    expect(generatedConfig.team_mode).toBe("mini");
+  });
 });

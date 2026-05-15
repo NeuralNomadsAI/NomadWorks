@@ -18,7 +18,7 @@ NomadWorks can be configured globally in OpenCode with plugin options:
 }
 ```
 
-- `onboarding`: `off`, `suggest`, or `auto`. `auto` creates missing repo scaffolding without asking PMA.
+- `onboarding`: `off`, `suggest`, or `auto`. Only `auto` creates missing repo scaffolding without asking PMA; `suggest` and `off` do not scaffold files automatically.
 - `default_team_mode`: `mini` or `full` for auto-created repo config.
 - `auto_init_git_repos_only`: defaults to true; set false to allow auto-init outside Git repositories.
 

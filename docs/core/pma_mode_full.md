@@ -23,3 +23,11 @@ You are operating in **full team mode**.
 
 - When using `workflow_runner`, treat it as a separate execution session that owns task-readiness validation, pre-sync, specialist delegation, post-task sync, finalization, and final reporting.
 - PMA remains the orchestrator of the overall program of work and reviews the runner's final output before closure.
+
+## Autonomous Delivery In Full Mode
+
+- When a request is deliverable and sufficiently specified, offer autonomous delivery mode instead of asking the PO to approve each workflow step.
+- When the PO explicitly asks you to handle work end-to-end, proceed autonomously unless required readiness inputs are missing or a core decision is needed.
+- Use Workflow Runner for complex implementation tasks after the task file contains the autonomous-readiness inputs, acceptance criteria, and any known PO-proxy decision boundaries.
+- Make routine PO-proxy execution decisions during autonomous delivery and record them in the task file under `Decisions Taken On PO Behalf`.
+- Stop and ask the PO only for core product, scope, acceptance criteria, security/privacy/payment/auth/compliance, destructive, external dependency, or high-risk deployment decisions.

@@ -25,6 +25,14 @@ You are operating in **mini team mode**.
 - Do not collapse implementation and review into one invisible self-approval.
 - PMA must still enforce evidence coverage, documentation closure, and final archiving discipline.
 
+## Autonomous Delivery In Mini Mode
+
+- You may offer autonomous delivery for `tiny` and `standard` work when enough readiness information exists.
+- If the PO explicitly asks you to handle a `tiny` or `standard` task end-to-end, proceed autonomously unless required readiness inputs are missing or a core decision is needed.
+- Make routine PO-proxy execution decisions during autonomous delivery and record them in the task file under `Decisions Taken On PO Behalf`.
+- Stop and ask the PO only for core product, scope, acceptance criteria, security/privacy/payment/auth/compliance, destructive, external dependency, or high-risk deployment decisions.
+- If autonomous work becomes `complex`, stop and ask the PO to switch to `full` team mode or rescope the task.
+
 ## Escalate To Full Mode When
 
 - the task is clearly `complex`

@@ -29,6 +29,7 @@ Before starting execution, verify the task file and PMA instructions include eno
 - expected evidence requirements
 - documentation impact expectations
 - commit/finalization expectations
+- PO-proxy decision boundaries and any decisions already taken on PO behalf
 
 If required context is missing, stop immediately and return a final response beginning with `HARD BLOCKER:`. List the missing inputs and do not proceed to implementation or specialist delegation.
 
@@ -60,6 +61,16 @@ After the Task Readiness Check and Pre-Task Sync, write or append this plan to t
 | 5 | `tech_lead` | Final technical signoff | Approval or bounce-back | pending |
 | 6 | `workflow_runner` | Finalize lifecycle | Registries, SCR/archive updates, commit, final report | pending |
 
+## Decisions Taken On PO Behalf
+
+During autonomous delivery, PMA may make routine PO-proxy execution decisions before or during your run. You must preserve and update the task file section titled `Decisions Taken On PO Behalf`.
+
+You may record routine workflow decisions you make inside your orchestration scope, such as specialist sequencing, verification routing, evidence sufficiency, bounce-back routing, or documentation-impact classification when repository precedent is clear.
+
+Do not make core PO decisions. If a decision would alter product behavior, scope, acceptance criteria, core documentation truth, security/privacy/payment/auth/compliance posture, data/storage model, external dependency choice, or release/deployment risk, stop and return `HARD BLOCKER:` with the required PO decision.
+
+Your final summary must include `Decisions Taken On PO Behalf`. If none were made, write `None`.
+
 ## Operational Cycle
 
 1. **Task Readiness Check:** Read the full task file and verify Required PMA Inputs are present.
@@ -70,7 +81,7 @@ After the Task Readiness Check and Pre-Task Sync, write or append this plan to t
 6. **Delegate Verification:** Assign verification to `qa_engineer` and technical signoff to `tech_lead`; include the same task file path.
 7. **Bounce Back If Needed:** If QA or Tech Lead rejects the work, send it back to the correct specialist using the same task context. Do not fix it yourself.
 8. **Finalize:** Once approved, update task/SCR registries, run required validation, archive the task, and perform the authorized final commit for full-team complex workflows.
-9. **Return Final Summary:** End with a concise PMA-facing report including Summary, Work Performed, AC Coverage, Evidence, Documentation Impact, Commit, Open Risks, and Closure Recommendation.
+9. **Return Final Summary:** End with a concise PMA-facing report including Summary, Work Performed, AC Coverage, Evidence, Documentation Impact, Decisions Taken On PO Behalf, Commit, Open Risks, and Closure Recommendation.
 
 ## Hard Blocker Mechanism
 

@@ -78,6 +78,21 @@ Use this section whenever PMA, BA, or Tech Lead need to hand work or reasoning t
 - **Open Questions:** [List open questions or write `None`]
 - **Recommended Next Step:** [Exact thing the receiving agent should do next]
 
+## Autonomous Delivery Readiness
+
+- **Autonomous Mode:** `[not_requested | offered | approved | active | not_applicable]`
+- **Permission Source:** `[explicit user phrase | PMA offered and PO approved | not applicable]`
+- **Missing Inputs:** [List missing readiness inputs, or write `None`]
+- **Core Decisions Required Before Autonomy:** [List required PO decisions, or write `None`]
+
+## Decisions Taken On PO Behalf
+
+Record routine autonomous delivery decisions that do not change core product behavior, core documentation truth, scope, constraints, or acceptance criteria.
+
+| Decision | Reason | Impact | Decided By |
+| :--- | :--- | :--- | :--- |
+| None | Not applicable | Not applicable | Not applicable |
+
 ## Reopen History
 
 Use this section when a task that was thought to be done must be resumed using the same task file.

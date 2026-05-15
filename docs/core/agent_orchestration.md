@@ -65,6 +65,13 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and a **De
 - **Documentation as the Single Source of Truth:** All agents refer to project documentation in `docs/` as the primary authority, and the PMA ensures it stays current.
 - **Git Integration:** Agents use Git under PMA oversight and follow the repository's branching strategy.
 
+### 4.1 Autonomous Delivery
+
+- PMA should gather enough delivery context to take eligible work autonomously instead of asking the PO for each workflow step.
+- Once autonomous delivery is approved or explicitly requested, PMA may make routine PO-proxy execution decisions when repository precedent is clear and the decision does not change core product behavior, core documentation truth, scope, constraints, or acceptance criteria.
+- PMA and Workflow Runner must record routine PO-proxy decisions in the task file under `Decisions Taken On PO Behalf` and report them to the PO after implementation.
+- PMA must stop for core PO decisions, including product behavior, scope, acceptance criteria, core documentation truth, security/privacy/payment/auth/compliance, destructive actions, new external dependencies, and high-risk deployment/release choices.
+
 ### 5. Blocker Management
 If a delegated task cannot proceed due to external factors or missing information:
 1.  **Move to Blocked:** The PMA moves the task folder to `tasks/blocked/`.

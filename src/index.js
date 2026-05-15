@@ -778,7 +778,8 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
 function extractPromptResultText(runResult) {
   const candidateParts = runResult?.data?.parts || runResult?.parts || [];
   if (Array.isArray(candidateParts) && candidateParts.length > 0) {
-    return candidateParts.map(part => part?.text || "").filter(Boolean).join("\n").trim();
+    const partsText = extractTextParts(candidateParts);
+    if (partsText) return partsText;
   }
 
   const text = runResult?.data?.text || runResult?.text || runResult?.data?.message || runResult?.message;

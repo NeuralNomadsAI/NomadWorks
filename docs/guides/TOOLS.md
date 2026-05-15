@@ -82,6 +82,56 @@ This tool performs the full close flow synchronously:
 - archives the raw runtime transcript
 - returns the final closed result from the tool call itself
 
+## `nomadworks_session_export`
+
+Exports selected OpenCode sessions with the native `opencode export <sessionID>` command into the workspace area of the Git-managed PAI root. If no `session_ids` are provided, it exports the current OpenCode session.
+
+### Arguments
+
+- `session_ids`: optional OpenCode session IDs, separated by commas or whitespace. Uses the current session when empty.
+- `repo_path`: optional PAI root path. Uses `pai.root`, `sync.repo_path`, plugin `pai_root`, or plugin `sync_repo_path` when empty.
+- `opencode_command`: optional OpenCode executable path or command. Uses `pai.opencode_command` or `opencode` when empty.
+
+### Notes
+
+- Generated files live under `WORKSPACES/<repo-id>/SESSIONS/` inside the PAI repository.
+- Run `nomadworks_session_import` on another machine to import them with the native `opencode import <file>` command.
+
+## `nomadworks_session_import`
+
+Imports selected OpenCode sessions from native `opencode export` JSON files in the workspace area of the Git-managed PAI root.
+
+### Arguments
+
+- `session_ids`: optional session IDs to import. Imports all exported OpenCode sessions in the manifest when empty.
+- `repo_path`: optional PAI root path. Uses `pai.root`, `sync.repo_path`, plugin `pai_root`, or plugin `sync_repo_path` when empty.
+- `opencode_command`: optional OpenCode executable path or command. Uses `pai.opencode_command` or `opencode` when empty.
+
+### Notes
+
+- Uses the native `opencode import <file>` command in the current worktree.
+
+## `nomadworks_sync_status`
+
+Shows sync repository status for global PAI and the current workspace.
+
+### Arguments
+
+- `repo_path`: optional sync Git repository path. Uses `pai.root`, `sync.repo_path`, plugin `pai_root`, or plugin `sync_repo_path`.
+
+## `nomadworks_sync_pull`
+
+Runs `git pull --ff-only` in the configured sync repository.
+
+## `nomadworks_sync_push`
+
+Runs `git add .`, `git commit`, and `git push` in the configured sync repository.
+
+### Arguments
+
+- `repo_path`: optional sync Git repository path.
+- `message`: optional commit message. Defaults to `sync nomadworks pai`.
+
 ## `nomadflow_run_workflow`
 
 Starts a `workflow_runner` session for a complex task.

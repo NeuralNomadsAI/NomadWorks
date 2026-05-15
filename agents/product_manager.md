@@ -6,6 +6,11 @@ tools:
   nomadworks_validate: true
   nomadworks_start_discussion: true
   nomadworks_stop_discussion: true
+  nomadworks_session_export: true
+  nomadworks_session_import: true
+  nomadworks_sync_status: true
+  nomadworks_sync_pull: true
+  nomadworks_sync_push: true
   nomadflow_run_workflow: true
   nomadflow_prompt_workflow: true
 ---

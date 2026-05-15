@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
 import YAML from "yaml";
 import ignore from "ignore";
 
@@ -16,6 +18,7 @@ const MINI_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_l
 const DISCUSSION_BACKFILL_FETCH_LIMIT = 100;
 const NOMADWORKS_DIRNAME = ".nomadworks";
 const LEGACY_NOMADWORKS_DIRNAME = ".codenomad";
+const SYNC_MANIFEST = "manifest.json";
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
@@ -55,8 +58,414 @@ function repoAgentAdditionsDir(worktree) {
   return path.join(nomadworksDir(worktree), "agent-additions");
 }
 
+function expandHome(inputPath) {
+  if (typeof inputPath !== "string" || !inputPath.trim()) return inputPath;
+  const trimmed = inputPath.trim();
+  if (trimmed === "~") return os.homedir();
+  if (trimmed.startsWith("~/") || trimmed.startsWith("~\\")) return path.join(os.homedir(), trimmed.slice(2));
+  return trimmed;
+}
+
+function globalNomadworksDir(options = {}) {
+  const configuredRoot = options.global_root || options.nomadworks_root;
+  if (configuredRoot) return path.resolve(expandHome(configuredRoot));
+  const base = process.platform === "win32"
+    ? (process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"))
+    : path.join(os.homedir(), ".config");
+  return path.join(base, "nomadworks");
+}
+
+function globalPaiDir(options = {}) {
+  return path.resolve(expandHome(options.pai_root || options.sync_repo_path || path.join(globalNomadworksDir(options), "pai")));
+}
+
+function globalPaiUserDir(options = {}) {
+  return path.join(globalPaiDir(options), "USER");
+}
+
+function globalPaiMemoryDir(options = {}) {
+  return path.join(globalPaiDir(options), "MEMORY");
+}
+
+function globalPaiLearningsDir(options = {}) {
+  return path.join(globalPaiDir(options), "LEARNINGS");
+}
+
+function workspaceSyncRoot(syncRoot, worktree) {
+  return path.join(syncRoot, "WORKSPACES", memoryRepoId(worktree));
+}
+
+function workspacePaiDirFromRoot(paiRoot, worktree) {
+  return path.join(paiRoot, "WORKSPACES", memoryRepoId(worktree));
+}
+
+function workspacePaiMemoryDirFromRoot(paiRoot, worktree) {
+  return path.join(workspacePaiDirFromRoot(paiRoot, worktree), "MEMORY");
+}
+
+function workspacePaiSessionsDirFromRoot(paiRoot, worktree) {
+  return path.join(workspacePaiDirFromRoot(paiRoot, worktree), "SESSIONS");
+}
+
 function legacyRepoAgentsDir(worktree) {
   return path.join(legacyNomadworksDir(worktree), "nomadworks", "agents");
+}
+
+function memoryRepoId(worktree) {
+  return path.basename(worktree).toLowerCase().replace(/[^a-z0-9._-]+/g, "-") || "repository";
+}
+
+function resolveConfiguredPaiRoot(worktree, repoCfg, options = {}, args = {}) {
+  const configuredPath = typeof args.repo_path === "string" && args.repo_path.trim()
+    ? args.repo_path.trim()
+    : repoCfg.pai?.root || repoCfg.sync?.repo_path || options.pai_root || options.sync_repo_path;
+  if (!configuredPath) throw new Error("Configure pai.root, sync.repo_path, pai_root, or sync_repo_path before using PAI sync.");
+  const expandedPath = expandHome(configuredPath);
+  const resolvedPath = path.isAbsolute(expandedPath)
+    ? expandedPath
+    : path.resolve(worktree, expandedPath);
+  if (isPathInside(worktree, resolvedPath)) {
+    throw new Error(`PAI root must be outside the workspace: ${resolvedPath}`);
+  }
+  return resolvedPath;
+}
+
+function resolveWorkspaceExchangeRoot(worktree, repoCfg, options = {}, args = {}) {
+  return workspaceSyncRoot(resolveConfiguredPaiRoot(worktree, repoCfg, options, args), worktree);
+}
+
+function shouldScaffoldPaiOnLoad(repoCfg, options = {}) {
+  return Boolean(repoCfg.pai?.root)
+    || Boolean(repoCfg.sync?.repo_path)
+    || Boolean(options.pai_root)
+    || Boolean(options.sync_repo_path);
+}
+
+function isPathInside(parentPath, childPath) {
+  const relativePath = path.relative(parentPath, childPath);
+  return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+}
+
+const SECRET_PATTERNS = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/i,
+  /\b(?:api[_-]?key|access[_-]?token|secret|password|credential)s?\b\s*[:=]\s*['\"]?[^\s'\"]{12,}/i,
+  /\b(?:ghp|gho|ghu|ghs|github_pat|sk-[a-z0-9])[a-z0-9_\-]{16,}\b/i
+];
+
+function readManifest(manifestPath, fallback) {
+  if (!fs.existsSync(manifestPath)) return fallback;
+  try {
+    return { ...fallback, ...JSON.parse(fs.readFileSync(manifestPath, "utf8")) };
+  } catch {
+    return fallback;
+  }
+}
+
+function parseSessionIds(value) {
+  if (Array.isArray(value)) return value.map(String).map(id => id.trim()).filter(Boolean);
+  if (typeof value !== "string") return [];
+  return value.split(/[\s,]+/).map(id => id.trim()).filter(Boolean);
+}
+
+function sessionTranscriptRelativePath(sessionId) {
+  const safeId = sessionId.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 120) || "session";
+  return path.join("SESSIONS", `${safeId}.json`);
+}
+
+function opencodeCommand(repoCfg, args = {}) {
+  const configured = typeof args.opencode_command === "string" && args.opencode_command.trim()
+    ? args.opencode_command.trim()
+    : repoCfg.pai?.opencode_command;
+  return configured || "opencode";
+}
+
+function runOpenCodeCommand(command, commandArgs, worktree) {
+  const result = spawnSync(command, commandArgs, {
+    cwd: worktree,
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024,
+    shell: false
+  });
+
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || "unknown error").trim();
+    throw new Error(`${command} ${commandArgs.join(" ")} failed: ${detail}`);
+  }
+  return result.stdout || "";
+}
+
+async function exportOpenCodeSessions(worktree, repoCfg, options = {}, args = {}) {
+  const sessionIds = parseSessionIds(args.session_ids);
+  if (sessionIds.length === 0 && args.current_session_id) sessionIds.push(args.current_session_id);
+  if (sessionIds.length === 0) throw new Error("Provide at least one session ID in session_ids, or call this tool from an OpenCode session context.");
+
+  const targetRoot = resolveWorkspaceExchangeRoot(worktree, repoCfg, options, args);
+  if (!fs.existsSync(targetRoot)) fs.mkdirSync(targetRoot, { recursive: true });
+
+  const manifestPath = path.join(targetRoot, "manifest.json");
+  const manifest = readManifest(manifestPath, {
+    version: 1,
+    repository: path.basename(worktree),
+    repository_id: memoryRepoId(worktree),
+    exported_at: new Date().toISOString(),
+    files: [],
+    skipped_sensitive_files: []
+  });
+
+  const command = opencodeCommand(repoCfg, args);
+  const exported = [];
+  const failed = [];
+  const manifestFiles = new Set(Array.isArray(manifest.files) ? manifest.files : []);
+
+  for (const sessionId of sessionIds) {
+    try {
+      const relativePath = sessionTranscriptRelativePath(sessionId).replace(/\\/g, "/");
+      const targetPath = path.join(targetRoot, relativePath);
+      const content = runOpenCodeCommand(command, ["export", sessionId], worktree);
+      if (SECRET_PATTERNS.some(pattern => pattern.test(content))) {
+        manifest.skipped_sensitive_files ??= [];
+        manifest.skipped_sensitive_files.push(relativePath);
+        failed.push({ session_id: sessionId, reason: "native export matched sensitive content patterns" });
+        continue;
+      }
+
+      const targetDir = path.dirname(targetPath);
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(targetPath, content, "utf8");
+      manifestFiles.add(relativePath);
+      exported.push({ session_id: sessionId, file: relativePath, format: "opencode-export-json" });
+    } catch (e) {
+      failed.push({ session_id: sessionId, reason: e.message });
+    }
+  }
+
+  manifest.exported_at = new Date().toISOString();
+  manifest.files = [...manifestFiles].sort();
+  manifest.opencode_sessions ??= [];
+  const priorSessions = new Map(manifest.opencode_sessions.map(entry => [entry.session_id, entry]));
+  for (const entry of exported) priorSessions.set(entry.session_id, { ...entry, exported_at: manifest.exported_at });
+  manifest.opencode_sessions = [...priorSessions.values()].sort((a, b) => a.session_id.localeCompare(b.session_id));
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+
+  return { targetRoot, exported, failed, manifest };
+}
+
+function importOpenCodeSessions(worktree, repoCfg, options = {}, args = {}) {
+  const sourceRoot = resolveWorkspaceExchangeRoot(worktree, repoCfg, options, args);
+  const manifestPath = path.join(sourceRoot, "manifest.json");
+  if (!fs.existsSync(manifestPath)) throw new Error(`PAI workspace manifest not found at ${manifestPath}`);
+
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const manifestFiles = new Set(Array.isArray(manifest.files) ? manifest.files : []);
+  const requestedIds = parseSessionIds(args.session_ids);
+  const requestedSet = new Set(requestedIds);
+  const sessions = Array.isArray(manifest.opencode_sessions) ? manifest.opencode_sessions : [];
+  const selectedSessions = requestedSet.size > 0
+    ? sessions.filter(session => requestedSet.has(session.session_id))
+    : sessions;
+  if (selectedSessions.length === 0) throw new Error("No matching OpenCode session exports found in manifest.");
+
+  const command = opencodeCommand(repoCfg, args);
+  const imported = [];
+  const failed = [];
+
+  for (const session of selectedSessions) {
+    try {
+      if (session.format !== "opencode-export-json") {
+        failed.push({ session_id: session.session_id, reason: "unsupported session export format" });
+        continue;
+      }
+      const sessionFile = String(session.file || "").replace(/\\/g, "/");
+      const normalizedFile = path.posix.normalize(sessionFile);
+      if (path.isAbsolute(sessionFile) || sessionFile.split("/").includes("..") || !/^SESSIONS\/[^/]+\.json$/.test(normalizedFile)) {
+        failed.push({ session_id: session.session_id, reason: "invalid session export path" });
+        continue;
+      }
+      if (!manifestFiles.has(normalizedFile)) {
+        failed.push({ session_id: session.session_id, reason: "session export not listed in manifest files" });
+        continue;
+      }
+      const sourcePath = path.join(sourceRoot, normalizedFile);
+      if (!isPathInside(sourceRoot, sourcePath) || !fs.existsSync(sourcePath)) {
+        failed.push({ session_id: session.session_id, reason: "export file not found" });
+        continue;
+      }
+      runOpenCodeCommand(command, ["import", sourcePath], worktree);
+      imported.push({ session_id: session.session_id, file: normalizedFile });
+    } catch (e) {
+      failed.push({ session_id: session.session_id, reason: e.message });
+    }
+  }
+
+  return { sourceRoot, imported, failed };
+}
+
+function syncStatus(worktree, repoCfg, options, args = {}) {
+  const root = resolveConfiguredPaiRoot(worktree, repoCfg, options, args);
+  const workspaceManifestPath = path.join(workspaceSyncRoot(root, worktree), SYNC_MANIFEST);
+  const readManifest = (filePath) => {
+    if (!fs.existsSync(filePath)) return null;
+    try {
+      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    } catch {
+      return { error: "manifest is not valid JSON" };
+    }
+  };
+  return {
+    pai_root: root,
+    is_git_repository: fs.existsSync(path.join(root, ".git")),
+    git_status: fs.existsSync(path.join(root, ".git")) ? runGitStatus(root) : null,
+    workspace_root: workspaceSyncRoot(root, worktree),
+    workspace_manifest: readManifest(workspaceManifestPath)
+  };
+}
+
+function runGitStatus(syncRoot) {
+  const status = runGitSyncCommand(syncRoot, ["status", "--short", "--branch"]);
+  const lines = status.stdout.split(/\r?\n/).filter(Boolean);
+  const branchLine = lines[0] || "";
+  const divergence = branchLine.match(/\[(.*?)\]/)?.[1] || "";
+  return {
+    ...status,
+    branch: branchLine.replace(/^##\s*/, "").replace(/\s*\[.*\]$/, ""),
+    dirty: lines.slice(1).length > 0,
+    ahead: Number(divergence.match(/ahead\s+(\d+)/)?.[1] || 0),
+    behind: Number(divergence.match(/behind\s+(\d+)/)?.[1] || 0),
+    has_upstream: branchLine.includes("...")
+  };
+}
+
+function runGitSyncCommand(syncRoot, args, options = {}) {
+  if (!fs.existsSync(path.join(syncRoot, ".git"))) throw new Error(`Sync root is not an existing Git repository: ${syncRoot}`);
+  const result = spawnSync("git", args, { cwd: syncRoot, encoding: "utf8", shell: false });
+  if (result.error) throw result.error;
+  const allowedStatuses = new Set([0, ...(options.allowStatuses || [])]);
+  if (!allowedStatuses.has(result.status)) {
+    const detail = (result.stderr || result.stdout || "unknown git error").trim();
+    throw new Error(`git ${args.join(" ")} failed: ${detail}`);
+  }
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+function resolvePaiContextFiles(worktree, repoCfg, options = {}) {
+  if (repoCfg.features?.pai_context !== true) return [];
+  const configuredFiles = Array.isArray(repoCfg.pai?.context_files) ? repoCfg.pai.context_files : [];
+  const workspaceFiles = Array.isArray(repoCfg.pai?.workspace?.context_files)
+    ? repoCfg.pai.workspace.context_files
+    : ["MEMORY/PROJECT.md", "MEMORY/DECISIONS.md", "MEMORY/NOTES.md"];
+  const includeGlobal = repoCfg.pai?.global?.enabled !== false && options.pai_global !== false;
+  const includeWorkspace = repoCfg.pai?.workspace?.enabled !== false;
+  let paiRoot;
+  try {
+    paiRoot = resolveConfiguredPaiRoot(worktree, repoCfg, options, {});
+  } catch {
+    return [];
+  }
+  const files = [];
+
+  if (includeGlobal) {
+    files.push(...configuredFiles
+      .filter(file => typeof file === "string" && file.trim())
+      .map(file => file.trim())
+      .map(relativeFile => {
+        const normalized = relativeFile.replace(/^[\\/]+/, "");
+        const absolutePath = path.join(paiRoot, normalized);
+        return { relativePath: path.join("PAI", normalized).replace(/\\/g, "/"), absolutePath, root: paiRoot };
+      }));
+  }
+
+  if (includeWorkspace) {
+    files.push(...workspaceFiles
+    .filter(file => typeof file === "string" && file.trim())
+    .map(file => file.trim())
+    .map(relativeFile => {
+      const normalized = relativeFile.replace(/^[\\/]+/, "");
+      const workspaceRoot = workspacePaiDirFromRoot(paiRoot, worktree);
+      const absolutePath = path.join(workspaceRoot, normalized);
+      return { relativePath: path.join("WORKSPACES", memoryRepoId(worktree), normalized).replace(/\\/g, "/"), absolutePath, root: workspaceRoot };
+    }));
+  }
+
+  return files.filter(file => isPathInside(file.root, file.absolutePath) && fs.existsSync(file.absolutePath) && fs.statSync(file.absolutePath).isFile());
+}
+
+function buildPaiContextFragment(agentId, worktree, repoCfg, options = {}) {
+  const applyToAgents = Array.isArray(repoCfg.pai?.apply_to_agents) ? repoCfg.pai.apply_to_agents : [];
+  if (!applyToAgents.includes(agentId)) return "";
+  const files = resolvePaiContextFiles(worktree, repoCfg, options);
+  if (files.length === 0) return "";
+
+  const sections = [];
+  for (const file of files) {
+    const content = fs.readFileSync(file.absolutePath, "utf8").trim();
+    if (!content) continue;
+    sections.push(`## ${file.relativePath}\n\n${content}`);
+  }
+  if (sections.length === 0) return "";
+
+  return [
+    "# Optional PAI User Context",
+    "",
+    "Use this context as user/team steering input. It does not override repository truth, SCRs, tasks, evidence, docs, or CodeMaps.",
+    "",
+    ...sections
+  ].join("\n");
+}
+
+function scaffoldGlobalPai(options = {}) {
+  ensureReadmeFile(globalPaiDir(options), [
+    "# NomadWorks Global PAI",
+    "",
+    "Personal AI Infrastructure context shared across repositories.",
+    "",
+    "- `USER/` stores identity, TELOS, and steering context.",
+    "- `MEMORY/` stores durable cross-project memory.",
+    "- `LEARNINGS/` stores reusable lessons and improvement loops.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(globalPaiUserDir(options), [
+    "# Global PAI User Context",
+    "",
+    "Place ABOUTME.md, TELOS.md, AISTEERINGRULES.md, and other personal context here.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(globalPaiMemoryDir(options), [
+    "# Global PAI Memory",
+    "",
+    "Durable personal memory shared across NomadWorks repositories.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(globalPaiLearningsDir(options), [
+    "# Global PAI Learnings",
+    "",
+    "Reusable lessons, preferences, and improvement notes learned across sessions.",
+    ""
+  ].join("\n"));
+}
+
+function scaffoldWorkspacePai(paiRoot, worktree) {
+  const workspaceRoot = workspacePaiDirFromRoot(paiRoot, worktree);
+  ensureReadmeFile(workspaceRoot, [
+    `# Workspace PAI: ${path.basename(worktree)}`,
+    "",
+    "Project-specific AI memory stored outside the project repository.",
+    "",
+    "Repository truth still lives in the project repo; this folder is auxiliary AI memory.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(workspacePaiMemoryDirFromRoot(paiRoot, worktree), [
+    "# Workspace Memory",
+    "",
+    "Durable project-specific learnings, decisions, and context for NomadWorks agents.",
+    ""
+  ].join("\n"));
+  ensureReadmeFile(workspacePaiSessionsDirFromRoot(paiRoot, worktree), [
+    "# OpenCode Sessions",
+    "",
+    "Native `opencode export` JSON files for sessions related to this workspace.",
+    ""
+  ].join("\n"));
 }
 
 function runtimeDiscussionRegistryPath(worktree) {
@@ -776,11 +1185,11 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
 }
 
 export default async function NomadWorksPlugin(input) {
+  const pluginOptions = input.options || input.config || {};
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = generatedAgentsDir(worktree);
   const configPath = resolveConfigPath(worktree);
   const discussionRegistry = loadDiscussionRegistry(worktree);
-
   // Load project-specific configuration
   let repoCfg = { agents: {}, defaults: {}, features: {} };
   if (fs.existsSync(configPath)) {
@@ -791,6 +1200,15 @@ export default async function NomadWorksPlugin(input) {
     }
   }
   repoCfg = applyTeamConfigRules(repoCfg);
+  if (shouldScaffoldPaiOnLoad(repoCfg, pluginOptions)) {
+    try {
+      const paiRoot = resolveConfiguredPaiRoot(worktree, repoCfg, pluginOptions, {});
+      scaffoldGlobalPai({ ...pluginOptions, pai_root: paiRoot });
+      scaffoldWorkspacePai(paiRoot, worktree);
+    } catch (e) {
+      console.error(`[NomadWorks] PAI scaffolding skipped for ${worktree}:`, e);
+    }
+  }
   scaffoldNomadworksReadmes(worktree);
   syncGeneratedPolicies(worktree, repoCfg);
   const operatingTeamMode = getOperatingTeamMode(repoCfg);
@@ -862,12 +1280,11 @@ export default async function NomadWorksPlugin(input) {
         if (requestedTeamMode !== "mini" && requestedTeamMode !== "full") {
           return "Error: team_mode must be either 'mini' or 'full'.";
         }
-
         const cfgDir = nomadworksDir(context.worktree);
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
 
         // Discover all agent IDs to enable them explicitly
-        const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR) 
+        const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR)
           ? fs.readdirSync(BUNDLE_AGENTS_DIR).filter(f => f.endsWith(".md")).map(f => f.replace(".md", ""))
           : [];
 
@@ -879,7 +1296,7 @@ export default async function NomadWorksPlugin(input) {
 
         let nomadworksConfig = fs.readFileSync(nomadworksTmplPath, "utf8");
         nomadworksConfig = nomadworksConfig.replace("{{teamMode}}", requestedTeamMode);
-        
+
         // Append dynamically discovered agents to the template
         let agentsSection = "";
         for (const id of agentIds) {
@@ -914,7 +1331,7 @@ export default async function NomadWorksPlugin(input) {
         const donePath = path.join(tasksDir, "done.md");
         const scrsCurrentPath = path.join(scrsDir, "current.md");
         const scrsDonePath = path.join(scrsDir, "done.md");
-        
+
         if (!fs.existsSync(currentPath)) {
           fs.writeFileSync(currentPath, "# Current Tasks (Backlog)\n\n## 💬 Active Discussions\n- (None)\n\n## 🚀 Active\n- (None)\n\n## 📋 Todo\n- (None)\n\n## 🛑 Blocked\n- (None)\n", "utf8");
         }
@@ -1130,6 +1547,109 @@ export default async function NomadWorksPlugin(input) {
         }
       }
     }),
+    nomadworks_session_export: tool({
+      description: "Export selected OpenCode sessions with the native opencode export command into the workspace PAI sessions directory",
+      args: {
+        session_ids: tool.schema.string().describe("Optional OpenCode session IDs, separated by commas or whitespace. Uses the current session when empty."),
+        repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, or plugin pai_root when empty."),
+        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.")
+      },
+      async execute(args, context) {
+        try {
+          const currentSessionId = context.sessionId || context.sessionID;
+          const exported = await exportOpenCodeSessions(context.worktree, repoCfg, pluginOptions, { ...args, current_session_id: currentSessionId });
+          return JSON.stringify({
+            exported_to: exported.targetRoot,
+            exported_sessions: exported.exported,
+            failed_sessions: exported.failed,
+            next_step: "Commit and push the PAI repository with Git from the exported_to path or its parent repository. Import later with nomadworks_session_import."
+          }, null, 2);
+        } catch (e) {
+          return `FAIL: ${e.message}`;
+        }
+      }
+    }),
+    nomadworks_session_import: tool({
+      description: "Import selected OpenCode sessions from native opencode export JSON files in the workspace PAI sessions directory",
+      args: {
+        session_ids: tool.schema.string().describe("Optional session IDs to import. Imports all exported OpenCode sessions in the manifest when empty."),
+        repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, or plugin pai_root when empty."),
+        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.")
+      },
+      async execute(args, context) {
+        try {
+          const imported = importOpenCodeSessions(context.worktree, repoCfg, pluginOptions, args);
+          return JSON.stringify({
+            imported_from: imported.sourceRoot,
+            imported_sessions: imported.imported,
+            failed_sessions: imported.failed
+          }, null, 2);
+        } catch (e) {
+          return `FAIL: ${e.message}`;
+        }
+      }
+    }),
+    nomadworks_sync_status: tool({
+      description: "Show global PAI and workspace sync status",
+      args: {
+        repo_path: tool.schema.string().describe("Optional sync Git repository path. Uses pai.root, sync.repo_path, pai_root, or plugin sync_repo_path.")
+      },
+      async execute(args, context) {
+        try {
+          return JSON.stringify(syncStatus(context.worktree, repoCfg, pluginOptions, args), null, 2);
+        } catch (e) {
+          return `FAIL: ${e.message}`;
+        }
+      }
+    }),
+    nomadworks_sync_pull: tool({
+      description: "Run git pull in the configured sync repository",
+      args: {
+        repo_path: tool.schema.string().describe("Optional sync Git repository path.")
+      },
+      async execute(args, context) {
+        try {
+          const root = resolveConfiguredPaiRoot(context.worktree, repoCfg, pluginOptions, args);
+          return JSON.stringify({ sync_root: root, pull: runGitSyncCommand(root, ["pull", "--ff-only"]) }, null, 2);
+        } catch (e) {
+          return `FAIL: ${e.message}`;
+        }
+      }
+    }),
+    nomadworks_sync_push: tool({
+      description: "Commit and push the configured sync repository",
+      args: {
+        repo_path: tool.schema.string().describe("Optional sync Git repository path."),
+        message: tool.schema.string().describe("Optional commit message. Defaults to 'sync nomadworks pai'.")
+      },
+      async execute(args, context) {
+        try {
+          const root = resolveConfiguredPaiRoot(context.worktree, repoCfg, pluginOptions, args);
+          const message = typeof args.message === "string" && args.message.trim() ? args.message.trim() : "sync nomadworks pai";
+          const add = runGitSyncCommand(root, ["add", "."]);
+          const commit = runGitSyncCommand(root, ["commit", "-m", message], { allowStatuses: [1] });
+          const commitOutput = `${commit.stdout}\n${commit.stderr}`.toLowerCase();
+          if (commit.status !== 0 && (commitOutput.includes("nothing to commit") || commitOutput.includes("no changes added to commit"))) {
+            return JSON.stringify({
+              sync_root: root,
+              add,
+              commit,
+              push: null,
+              status: "no_changes",
+              message: "No PAI changes to commit."
+            }, null, 2);
+          }
+          if (commit.status !== 0) {
+            const detail = (commit.stderr || commit.stdout || "unknown git error").trim();
+            return `FAIL: git commit -m ${message} failed: ${detail}`;
+          }
+          const push = runGitSyncCommand(root, ["push"]);
+          return JSON.stringify({ sync_root: root, add, commit, push }, null, 2);
+        } catch (e) {
+          return `FAIL: ${e.message}`;
+        }
+      }
+    }),
      nomadflow_run_workflow: tool({
       description: "Start a workflow_runner session for a complex task",
       args: {
@@ -1337,6 +1857,11 @@ export default async function NomadWorksPlugin(input) {
         const additionFragment = loadMarkdownFragment(path.join(repoAgentAdditions, file), worktree);
         if (additionFragment) {
           finalPrompt = `${finalPrompt}\n\n# Repository-Specific ${id} Additions\n\n${additionFragment}`;
+        }
+
+        const paiContextFragment = buildPaiContextFragment(id, worktree, repoCfg, pluginOptions);
+        if (paiContextFragment) {
+          finalPrompt = `${finalPrompt}\n\n${paiContextFragment}`;
         }
 
         const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;

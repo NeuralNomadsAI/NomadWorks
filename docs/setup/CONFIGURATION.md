@@ -17,6 +17,7 @@ defaults:
 features:
   debug_dumps: true
   codemap_verification: true
+  # pai_context: false
 
 policies:
   extract_defaults: none
@@ -115,3 +116,51 @@ Create `.nomadworks/agents/<agent>.md` to:
 ## Feature flags
 
 - `features.keep_builtin_agents`: when `true`, NomadWorks will not disable agents that OpenCode already registered, including built-in agents such as `build`, `plan`, `general`, and `explore`. NomadWorks will still set `product_manager` as the default agent.
+- `features.pai_context`: when `true`, injects selected global and workspace PAI user files into configured agent prompts.
+
+## PAI plugin options
+
+NomadWorks can be configured globally in OpenCode with PAI root options:
+
+```json
+{
+  "plugin": [["@neuralnomads/nomadworks", {
+    "pai_root": "~/nomadworks-pai",
+    "sync_repo_path": "~/nomadworks-pai"
+  }]]
+}
+```
+
+- `pai_root`: Git-managed PAI root shared across repositories.
+- `sync_repo_path`: defaults Git operations to the same PAI root.
+
+## PAI context
+
+```yaml
+features:
+  pai_context: true
+
+pai:
+  root: ../nomadworks-pai
+  opencode_command: opencode
+  workspace:
+    enabled: true
+    context_files:
+      - MEMORY/PROJECT.md
+      - MEMORY/DECISIONS.md
+      - MEMORY/NOTES.md
+  context_files:
+    - USER/ABOUTME.md
+    - USER/TELOS.md
+    - USER/AISTEERINGRULES.md
+  apply_to_agents:
+    - product_manager
+    - business_analyst
+    - tech_lead
+```
+
+When enabled, NomadWorks appends selected global PAI files first, then selected workspace PAI files. Both live in the Git-managed PAI root, outside the project repository. Global PAI uses `USER/`, `MEMORY/`, and `LEARNINGS/`; workspace PAI uses `WORKSPACES/<repo-id>/`. Neither overrides repository truth, SCRs, task files, evidence, docs, or CodeMaps.
+
+Use `nomadworks_session_export` to export the current OpenCode session, or pass explicit session IDs to export selected sessions using native `opencode export <sessionID>` JSON. Use `nomadworks_session_import` on another machine after `nomadworks_sync_pull` to import those files with native `opencode import <file>`.
+
+Use `nomadworks_sync_pull` and `nomadworks_sync_push` for Git. Git, not NomadWorks, handles text-file merges and conflicts in the PAI root. Global PAI lives under `USER/`, `MEMORY/`, and `LEARNINGS/`; repo-specific PAI lives under `WORKSPACES/<repo-id>/`.

@@ -95,13 +95,13 @@ Track these task files under `Active Discussions` in `tasks/current.md` until th
 
 ## Drive-To-Done
 
-When Drive-To-Done is explicitly active, PMA or Workflow Runner continues the current task lifecycle until `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT`.
+When Drive-To-Done is explicitly requested by the user, PMA, or repository workflow, PMA or Workflow Runner should keep the current task lifecycle moving until `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT`.
 
 - `DONE`: Definition of Done is satisfied and closure authority approves the result.
 - `HARD BLOCKER`: safe progress is impossible without a specific missing input or external fix.
 - `CYCLE LIMIT`: the agreed continuation limit is reached before closure.
 
-Drive-To-Done uses existing task files, acceptance criteria, evidence, and registries. It is not a separate workflow model.
+Drive-To-Done uses existing task files, acceptance criteria, evidence, and registries. It is not a separate workflow model or code-enforced runtime mode.
 
 SCR files use similarly lightweight frontmatter:
 

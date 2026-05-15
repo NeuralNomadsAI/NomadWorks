@@ -85,7 +85,7 @@ Your final summary must include `Decisions Taken On PO Behalf`. If none were mad
 
 ## Drive-To-Done Discipline
 
-When PMA starts this workflow with Drive-To-Done expectations, do not stop at a partial lifecycle stage. Continue through the existing Operational Cycle until one terminal state is reached: `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT`.
+When PMA starts this workflow with Drive-To-Done expectations, treat it as an explicit PMA/repository instruction rather than a separate runtime mode. Do not stop at a partial lifecycle stage; continue through the existing Operational Cycle until one terminal state is reached: `DONE`, `HARD BLOCKER`, or `CYCLE LIMIT`.
 
 At the end of each continuation cycle, inspect the task's Definition of Done and choose the next smallest concrete action needed for closure. Do not expand scope, skip required evidence, or perform implementation directly.
 

@@ -59,6 +59,72 @@ function legacyRepoAgentsDir(worktree) {
   return path.join(legacyNomadworksDir(worktree), "nomadworks", "agents");
 }
 
+function scaffoldRepository(worktree, teamMode) {
+  const requestedTeamMode = normalizeTeamMode(teamMode);
+  const cfgDir = nomadworksDir(worktree);
+  if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
+
+  const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR)
+    ? fs.readdirSync(BUNDLE_AGENTS_DIR).filter(f => f.endsWith(".md")).map(f => f.replace(".md", ""))
+    : [];
+
+  const nomadworksTmplPath = path.join(TEMPLATES_DIR, "nomadworks.yaml.template");
+  const codemapTmplPath = path.join(TEMPLATES_DIR, "codemap.yml.template");
+  if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath)) {
+    throw new Error("Initialization templates not found in plugin.");
+  }
+
+  let nomadworksConfig = fs.readFileSync(nomadworksTmplPath, "utf8");
+  nomadworksConfig = nomadworksConfig.replace("{{teamMode}}", requestedTeamMode);
+
+  let agentsSection = "";
+  for (const id of agentIds) {
+    const enabled = isAgentEnabledForTeamMode(id, requestedTeamMode) ? "true" : "false";
+    agentsSection += `  ${id}:\n    enabled: ${enabled}\n`;
+  }
+  nomadworksConfig = nomadworksConfig.replace(/^agents:\s*$/m, "agents:\n" + agentsSection.trimEnd());
+
+  const codemapConfig = fs.readFileSync(codemapTmplPath, "utf8").replace("{{projectName}}", path.basename(worktree));
+  const created = [];
+
+  const writeIfMissing = (filePath, content) => {
+    if (!fs.existsSync(filePath)) {
+      const dirPath = path.dirname(filePath);
+      if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(filePath, content, "utf8");
+      created.push(path.relative(worktree, filePath).replace(/\\/g, "/"));
+    }
+  };
+
+  writeIfMissing(path.join(cfgDir, "nomadworks.yaml"), nomadworksConfig);
+  writeIfMissing(path.join(worktree, "codemap.yml"), codemapConfig);
+  scaffoldNomadworksReadmes(worktree);
+
+  writeIfMissing(path.join(worktree, "tasks", "current.md"), "# Current Tasks (Backlog)\n\n## Active Discussions\n- (None)\n\n## Active\n- (None)\n\n## Todo\n- (None)\n\n## Blocked\n- (None)\n");
+  writeIfMissing(path.join(worktree, "tasks", "done.md"), "# Completed Tasks (Registry)\n\n| Date | Task ID | SCR ID | Commit | Summary |\n| :--- | :--- | :--- | :--- | :--- |\n");
+  writeIfMissing(path.join(worktree, "docs", "scrs", "current.md"), "# Current Spec Change Requests (Backlog)\n\n## Active/Review\n- (None)\n\n## Approved (Ready for Implementation)\n- (None)\n\n## Proposed\n- (None)\n");
+  writeIfMissing(path.join(worktree, "docs", "scrs", "done.md"), "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n");
+
+  return { teamMode: requestedTeamMode, created };
+}
+
+function hasGitRepository(worktree) {
+  let current = worktree;
+  while (current && current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, ".git"))) return true;
+    current = path.dirname(current);
+  }
+  return false;
+}
+
+function normalizeOnboarding(value) {
+  if (value === true) return "auto";
+  if (typeof value !== "string") return "suggest";
+  const normalized = value.trim().toLowerCase();
+  if (["auto", "suggest", "off"].includes(normalized)) return normalized;
+  return "suggest";
+}
+
 function runtimeDiscussionRegistryPath(worktree) {
   return path.join(nomadworksDir(worktree), "runtime", "discussions.json");
 }
@@ -775,11 +841,25 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
   return readResolvedFile(fragmentPath, worktree);
 }
 
-export default async function NomadWorksPlugin(input) {
+export default async function NomadWorksPlugin(input, options = {}) {
+  const pluginOptions = input.options || input.config || options || {};
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = generatedAgentsDir(worktree);
   const configPath = resolveConfigPath(worktree);
   const discussionRegistry = loadDiscussionRegistry(worktree);
+  const onboardingMode = normalizeOnboarding(pluginOptions.onboarding ?? pluginOptions.auto_init);
+  const defaultTeamMode = normalizeTeamMode(pluginOptions.default_team_mode || pluginOptions.team_mode || "full");
+
+  if (!fs.existsSync(configPath) && onboardingMode === "auto") {
+    const gitOnly = pluginOptions.auto_init_git_repos_only !== false;
+    if (!gitOnly || hasGitRepository(worktree)) {
+      try {
+        scaffoldRepository(worktree, defaultTeamMode);
+      } catch (e) {
+        console.error(`[NomadWorks] Auto-onboarding failed for ${worktree}:`, e);
+      }
+    }
+  }
 
   // Load project-specific configuration
   let repoCfg = { agents: {}, defaults: {}, features: {} };
@@ -863,72 +943,14 @@ export default async function NomadWorksPlugin(input) {
           return "Error: team_mode must be either 'mini' or 'full'.";
         }
 
-        const cfgDir = nomadworksDir(context.worktree);
-        if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
-
-        // Discover all agent IDs to enable them explicitly
-        const agentIds = fs.existsSync(BUNDLE_AGENTS_DIR) 
-          ? fs.readdirSync(BUNDLE_AGENTS_DIR).filter(f => f.endsWith(".md")).map(f => f.replace(".md", ""))
-          : [];
-
-        const nomadworksTmplPath = path.join(TEMPLATES_DIR, "nomadworks.yaml.template");
-        const codemapTmplPath = path.join(TEMPLATES_DIR, "codemap.yml.template");
-        if (!fs.existsSync(nomadworksTmplPath) || !fs.existsSync(codemapTmplPath)) {
-          return "Error: Initialization templates not found in plugin.";
+        let scaffolded;
+        try {
+          scaffolded = scaffoldRepository(context.worktree, requestedTeamMode);
+        } catch (e) {
+          return `Error: ${e.message}`;
         }
 
-        let nomadworksConfig = fs.readFileSync(nomadworksTmplPath, "utf8");
-        nomadworksConfig = nomadworksConfig.replace("{{teamMode}}", requestedTeamMode);
-        
-        // Append dynamically discovered agents to the template
-        let agentsSection = "";
-        for (const id of agentIds) {
-          const enabled = isAgentEnabledForTeamMode(id, requestedTeamMode) ? "true" : "false";
-          agentsSection += `  ${id}:\n    enabled: ${enabled}\n`;
-        }
-        nomadworksConfig = nomadworksConfig.replace("agents:", "agents:\n" + agentsSection);
-
-        let codemapConfig = fs.readFileSync(codemapTmplPath, "utf8");
-        codemapConfig = codemapConfig.replace("{{projectName}}", path.basename(context.worktree));
-
-        const cfgFilePath = path.join(cfgDir, "nomadworks.yaml");
-        const rootCodemapPath = path.join(context.worktree, "codemap.yml");
-
-        if (!fs.existsSync(cfgFilePath)) {
-          fs.writeFileSync(cfgFilePath, nomadworksConfig, "utf8");
-        }
-
-        if (!fs.existsSync(rootCodemapPath)) {
-          fs.writeFileSync(rootCodemapPath, codemapConfig, "utf8");
-        }
-
-        scaffoldNomadworksReadmes(context.worktree);
-
-        // Scaffold Task Registries
-        const tasksDir = path.join(context.worktree, "tasks");
-        const scrsDir = path.join(context.worktree, "docs", "scrs");
-        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
-        if (!fs.existsSync(scrsDir)) fs.mkdirSync(scrsDir, { recursive: true });
-
-        const currentPath = path.join(tasksDir, "current.md");
-        const donePath = path.join(tasksDir, "done.md");
-        const scrsCurrentPath = path.join(scrsDir, "current.md");
-        const scrsDonePath = path.join(scrsDir, "done.md");
-        
-        if (!fs.existsSync(currentPath)) {
-          fs.writeFileSync(currentPath, "# Current Tasks (Backlog)\n\n## 💬 Active Discussions\n- (None)\n\n## 🚀 Active\n- (None)\n\n## 📋 Todo\n- (None)\n\n## 🛑 Blocked\n- (None)\n", "utf8");
-        }
-        if (!fs.existsSync(donePath)) {
-          fs.writeFileSync(donePath, "# Completed Tasks (Registry)\n\n| Date | Task ID | SCR ID | Commit | Summary |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
-        }
-        if (!fs.existsSync(scrsCurrentPath)) {
-          fs.writeFileSync(scrsCurrentPath, "# Current Spec Change Requests (Backlog)\n\n## 🚀 Active/Review\n- (None)\n\n## 📋 Approved (Ready for Implementation)\n- (None)\n\n## 💡 Proposed\n- (None)\n", "utf8");
-        }
-        if (!fs.existsSync(scrsDonePath)) {
-          fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
-        }
-
-        const initSummary = `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, repo policy/agent folders, registries, and codemap.yml created.`;
+        const initSummary = `NomadWorks initialized in '${requestedTeamMode}' team mode. Created files: ${scaffolded.created.length ? scaffolded.created.join(", ") : "none (already present)"}.`;
 
         // Ensure OpenCode reloads config/agents after scaffolding changes.
         // Not all environments expose this API, so treat it as best-effort.

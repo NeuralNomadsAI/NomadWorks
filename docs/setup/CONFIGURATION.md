@@ -2,7 +2,25 @@
 
 NomadWorks reads repository-local configuration from `.nomadworks/nomadworks.yaml`.
 
-This file is typically created during the PMA-led repository setup flow.
+This file is typically created during PMA-led setup or by global auto-onboarding when the plugin is configured with `onboarding: "auto"`.
+
+## Global plugin options
+
+NomadWorks can be configured globally in OpenCode with plugin options:
+
+```json
+{
+  "plugin": [["@neuralnomads/nomadworks", {
+    "onboarding": "auto",
+    "default_team_mode": "full",
+    "auto_init_git_repos_only": true
+  }]]
+}
+```
+
+- `onboarding`: `off`, `suggest`, or `auto`. `auto` creates missing repo scaffolding without asking PMA.
+- `default_team_mode`: `mini` or `full` for auto-created repo config.
+- `auto_init_git_repos_only`: defaults to true; set false to allow auto-init outside Git repositories.
 
 ## Minimal config
 

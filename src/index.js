@@ -775,6 +775,23 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
   return readResolvedFile(fragmentPath, worktree);
 }
 
+function extractPromptResultText(runResult) {
+  const candidateParts = runResult?.data?.parts || runResult?.parts || [];
+  if (Array.isArray(candidateParts) && candidateParts.length > 0) {
+    return candidateParts.map(part => part?.text || "").filter(Boolean).join("\n").trim();
+  }
+
+  const text = runResult?.data?.text || runResult?.text || runResult?.data?.message || runResult?.message;
+  if (typeof text === "string" && text.trim()) return text.trim();
+
+  if (runResult?.data && Object.keys(runResult.data).length > 0) return JSON.stringify(runResult.data, null, 2);
+  const resultWithoutEmptyData = runResult && Object.fromEntries(
+    Object.entries(runResult).filter(([key, value]) => key !== "data" || (value && Object.keys(value).length > 0))
+  );
+  if (resultWithoutEmptyData && Object.keys(resultWithoutEmptyData).length > 0) return JSON.stringify(resultWithoutEmptyData, null, 2);
+  return "No final text was returned by the Workflow Runner session.";
+}
+
 export default async function NomadWorksPlugin(input) {
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = generatedAgentsDir(worktree);
@@ -820,8 +837,10 @@ export default async function NomadWorksPlugin(input) {
 
       if (debug) console.log(`[NomadFlow] Workflow Runner session ${sessionId} returned control.`);
 
-      // Capture final message and notify PMA
-      const finalMessage = runResult.data.parts.map(p => p.text).join("\n");
+      // Capture final message and notify PMA. OpenCode client versions differ
+      // in the exact response shape, so extract defensively instead of
+      // assuming data.parts exists.
+      const finalMessage = extractPromptResultText(runResult);
       if (debug) console.log(`[NomadFlow] Attempting to notify PMA session ${pmaSessionId} of completion...`);
       
       await client.session.promptAsync({

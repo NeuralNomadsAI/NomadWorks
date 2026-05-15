@@ -1,10 +1,12 @@
 import {
   isHiddenTree,
+  isIgnoredPath,
   isOperationalPath,
   isPlaceholderExemptPath,
   nomadworks_validate_logic
 } from "../src/validate_logic.js";
 import fs from "node:fs";
+import ignore from "ignore";
 import path from "node:path";
 import os from "node:os";
 
@@ -195,6 +197,12 @@ describe("nomadworks_validate", () => {
     expect(isPlaceholderExemptPath("tasks\\done-old\\task.md")).toBe(false);
     expect(isPlaceholderExemptPath("tasks\\done_backup\\task.md")).toBe(false);
     expect(isHiddenTree(".github\\workflows")).toBe(true);
+  });
+
+  test("Normalizes Windows-style relative paths before applying slash-based gitignore patterns", () => {
+    const ig = ignore().add("ignored/");
+
+    expect(isIgnoredPath(ig, "ignored\\logic.ts")).toBe(true);
   });
 
   test("Ignores hidden tool-owned directory trees like .github/workflows", async () => {

@@ -5,6 +5,8 @@ import ignore from "ignore";
 
 export const toPosixRelativePath = (relPath) => relPath.replaceAll("\\", "/");
 
+export const isIgnoredPath = (ig, relPath) => ig.ignores(toPosixRelativePath(relPath));
+
 export const isOperationalPath = (relPath) => {
   const normalizedRelPath = toPosixRelativePath(relPath);
   const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
@@ -47,7 +49,7 @@ export async function nomadworks_validate_logic(worktree) {
     const items = fs.readdirSync(dirPath, { withFileTypes: true });
     for (const item of items) {
       const relPath = path.relative(worktree, path.join(dirPath, item.name));
-      if (ig.ignores(relPath)) continue;
+      if (isIgnoredPath(ig, relPath)) continue;
 
       if (item.isFile() && sourceExtensions.includes(path.extname(item.name))) return true;
       if (item.isDirectory()) {
@@ -131,7 +133,7 @@ export async function nomadworks_validate_logic(worktree) {
 
   const walk = (dir) => {
     const relDir = path.relative(worktree, dir);
-    if (relDir && ig.ignores(relDir)) return;
+    if (relDir && isIgnoredPath(ig, relDir)) return;
     if (isHiddenTree(relDir)) return;
 
     const hasCodemap = fs.existsSync(path.join(dir, "codemap.yml"));

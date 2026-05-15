@@ -13,6 +13,28 @@ features:
   # debug_logs: false # Enable detailed console logging for the plugin
   # keep_builtin_agents: false # If true, do not disable agents OpenCode already registered, including built-ins
   codemap_verification: true
+  # pai_context: false # If true, injects selected Git-managed PAI root context into configured agents
+
+sync:
+  # repo_path: ../nomadworks-pai # Optional Git-managed PAI repository
+
+pai:
+  # root: ../nomadworks-pai # Optional Git-managed PAI root; defaults to sync.repo_path or global NomadWorks config
+  # opencode_command: opencode # Optional executable path or command for native OpenCode session export/import
+  workspace:
+    enabled: true
+    context_files:
+      - MEMORY/PROJECT.md
+      - MEMORY/DECISIONS.md
+      - MEMORY/NOTES.md
+  context_files:
+    - USER/ABOUTME.md
+    - USER/TELOS.md
+    - USER/AISTEERINGRULES.md
+  apply_to_agents:
+    - product_manager
+    - business_analyst
+    - tech_lead
 
 policies:
   extract_defaults: none # Set to 'all' to write bundled policy defaults to .nomadworks/generated/policies/

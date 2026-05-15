@@ -17,6 +17,7 @@ defaults:
 features:
   debug_dumps: true
   codemap_verification: true
+  # pai_context: false
 
 policies:
   extract_defaults: none
@@ -115,3 +116,55 @@ Create `.nomadworks/agents/<agent>.md` to:
 ## Feature flags
 
 - `features.keep_builtin_agents`: when `true`, NomadWorks will not disable agents that OpenCode already registered, including built-in agents such as `build`, `plan`, `general`, and `explore`. NomadWorks will still set `product_manager` as the default agent.
+- `features.pai_context`: when `true`, injects selected global and workspace PAI user files into configured agent prompts.
+
+## PAI plugin options
+
+NomadWorks can be configured globally in OpenCode with PAI root options:
+
+```json
+{
+  "plugin": [["@neuralnomads/nomadworks", {
+    "pai_root": "~/nomadworks-pai",
+    "sync_repo_path": "~/nomadworks-pai"
+  }]]
+}
+```
+
+- `pai_root`: Git-managed PAI root shared across repositories.
+- `sync_repo_path`: defaults Git operations to the same PAI root.
+
+These options may be supplied as tuple plugin options in OpenCode. Repository-local `pai.root` and `sync.repo_path` override global plugin defaults when present.
+
+## PAI context
+
+```yaml
+features:
+  pai_context: true
+
+pai:
+  root: ../nomadworks-pai
+  opencode_command: opencode
+  workspace:
+    enabled: true
+    # Optional stable override when the Git remote cannot identify this repo uniquely.
+    # id: neuralnomads-nomadworks
+    context_files:
+      - MEMORY/PROJECT.md
+      - MEMORY/DECISIONS.md
+      - MEMORY/NOTES.md
+  context_files:
+    - USER/ABOUTME.md
+    - USER/TELOS.md
+    - USER/AISTEERINGRULES.md
+  apply_to_agents:
+    - product_manager
+    - business_analyst
+    - tech_lead
+```
+
+When enabled, NomadWorks appends selected global PAI files first, then selected workspace PAI files. Both live in the Git-managed PAI root, outside the project repository. Global PAI uses `USER/`, `MEMORY/`, and `LEARNINGS/`; workspace PAI uses `WORKSPACES/<repo-id>/`. The workspace `<repo-id>` is derived from the repository's stable Git identity, preferring the normalized remote URL/full name rather than the local worktree folder name. Set `pai.workspace.id` only for edge cases where the Git identity is unavailable or must be overridden. Neither overrides repository truth, SCRs, task files, evidence, docs, or CodeMaps.
+
+Use `nomadworks_session_export` to export selected sessions using sanitized native `opencode export --sanitize <sessionID>` JSON by default. Raw exports require the explicit `raw_export: true` tool argument and should only be used when the caller accepts the sensitivity risk. When no `session_ids` are provided, export only works if the OpenCode runtime supplies the current session ID in the tool context; otherwise the tool returns a failure asking for explicit session IDs. Use `nomadworks_session_import` on another machine after `nomadworks_sync_pull` to import those files with native `opencode import <file>`.
+
+Use `nomadworks_sync_pull` and `nomadworks_sync_push` for Git. Git, not NomadWorks, handles text-file merges and conflicts in the PAI root. Mutating PAI/session tools fail fast unless the configured PAI root already contains `.git`. If there are no changes to commit, `nomadworks_sync_push` returns status `no_changes` and does not run `git push`. Global PAI lives under `USER/`, `MEMORY/`, and `LEARNINGS/`; repo-specific PAI lives under `WORKSPACES/<repo-id>/`.

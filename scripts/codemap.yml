@@ -1,0 +1,11 @@
+scope: module
+parent: ../codemap.yml
+entrypoints:
+  - path: build.js
+    description: Builds the distributable plugin files into dist/.
+internals:
+  - path: resolve-release-version.js
+    description: Resolves release version metadata for packaging workflows.
+commands:
+  - npm run build
+  - npm run release:check

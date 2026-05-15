@@ -1,0 +1,11 @@
+scope: module
+parent: ../codemap.yml
+entrypoints:
+  - path: plugin.test.js
+    description: Regression coverage for plugin PAI behavior and tool wiring.
+  - path: validate.test.js
+    description: Regression coverage for CodeMap validation behavior.
+  - path: pai-session-export.test.js
+    description: Regression coverage for sanitized and raw session export commands.
+commands:
+  - npm test

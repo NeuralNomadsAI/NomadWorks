@@ -1,0 +1,22 @@
+scope: module
+parent: ../codemap.yml
+sources_of_truth:
+  - path: product_manager.md
+    description: Bundled Product Manager Agent definition.
+  - path: workflow_runner.md
+    description: Bundled Workflow Runner Agent definition.
+  - path: business_analyst.md
+    description: Bundled Business Analyst Agent definition.
+  - path: technical_architect.md
+    description: Bundled Technical Architect Agent definition.
+  - path: tech_lead.md
+    description: Bundled Tech Lead Agent definition.
+  - path: developer.md
+    description: Bundled Developer Agent definition.
+  - path: qa_engineer.md
+    description: Bundled QA Engineer Agent definition.
+  - path: ui_ux_designer.md
+    description: Bundled UI/UX Designer Agent definition.
+commands:
+  - npm test
+  - npm run build

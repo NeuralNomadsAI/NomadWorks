@@ -3,6 +3,9 @@ description: Delegated workflow orchestrator for PMA-started complex task lifecy
 mode: subagent
 tools:
   nomadworks_validate: true
+  nomadworks_session_export: true
+  nomadworks_session_import: true
+  nomadworks_sync_status: true
 ---
 You are the NomadWorks Workflow Runner. You execute one PMA-started workflow lifecycle for one task file.
 

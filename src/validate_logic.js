@@ -3,6 +3,26 @@ import path from "node:path";
 import YAML from "yaml";
 import ignore from "ignore";
 
+export const toPosixRelativePath = (relPath) => relPath.replaceAll("\\", "/");
+
+export const isIgnoredPath = (ig, relPath) => ig.ignores(toPosixRelativePath(relPath));
+
+export const isOperationalPath = (relPath) => {
+  const normalizedRelPath = toPosixRelativePath(relPath);
+  const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
+  return operationalFolders.some(folder => normalizedRelPath === folder || normalizedRelPath.startsWith(`${folder}/`));
+};
+
+export const isPlaceholderExemptPath = (relPath) => {
+  const normalizedRelPath = toPosixRelativePath(relPath);
+  return normalizedRelPath === "tasks/done" || normalizedRelPath.startsWith("tasks/done/");
+};
+
+export const isHiddenTree = (relPath) => {
+  if (!relPath) return false;
+  return toPosixRelativePath(relPath).split("/").some(part => part.startsWith("."));
+};
+
 export async function nomadworks_validate_logic(worktree) {
   const rootCodemapPath = path.join(worktree, "codemap.yml");
   if (!fs.existsSync(rootCodemapPath)) {
@@ -25,16 +45,11 @@ export async function nomadworks_validate_logic(worktree) {
     ".php", ".rb", ".swift", ".kt", ".m", ".sh", ".sql", ".yaml", ".yml", ".json", ".md"
   ];
 
-  const isHiddenTree = (relPath) => {
-    if (!relPath) return false;
-    return relPath.split(path.sep).some(part => part.startsWith("."));
-  };
-
   const isSourceDir = (dirPath) => {
     const items = fs.readdirSync(dirPath, { withFileTypes: true });
     for (const item of items) {
       const relPath = path.relative(worktree, path.join(dirPath, item.name));
-      if (ig.ignores(relPath)) continue;
+      if (isIgnoredPath(ig, relPath)) continue;
 
       if (item.isFile() && sourceExtensions.includes(path.extname(item.name))) return true;
       if (item.isDirectory()) {
@@ -86,8 +101,7 @@ export async function nomadworks_validate_logic(worktree) {
 
     // Shadow File Check: Ensure all source files in this directory are indexed (Module scope only)
     const relDir = path.relative(worktree, dir);
-    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
-    const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));
+    const isOperational = isOperationalPath(relDir);
 
     if (map.scope === "module" && !isOperational) {
       const items = fs.readdirSync(dir, { withFileTypes: true });
@@ -119,14 +133,14 @@ export async function nomadworks_validate_logic(worktree) {
 
   const walk = (dir) => {
     const relDir = path.relative(worktree, dir);
-    if (relDir && ig.ignores(relDir)) return;
+    if (relDir && isIgnoredPath(ig, relDir)) return;
     if (isHiddenTree(relDir)) return;
 
     const hasCodemap = fs.existsSync(path.join(dir, "codemap.yml"));
     const items = fs.readdirSync(dir, { withFileTypes: true });
 
     // Check for placeholders in any .md file (except in tasks/done)
-    if (!relDir.startsWith("tasks/done")) {
+    if (!isPlaceholderExemptPath(relDir)) {
       for (const item of items) {
         if (item.isFile() && item.name.endsWith(".md")) {
           const content = fs.readFileSync(path.join(dir, item.name), "utf8");
@@ -139,8 +153,7 @@ export async function nomadworks_validate_logic(worktree) {
     }
 
     // Exclusion list for mandatory codemaps (operational folders)
-    const operationalFolders = ["tasks", "evidences", "docs", "templates", "dist"];
-    const isOperational = operationalFolders.some(f => relDir === f || relDir.startsWith(f + "/"));
+    const isOperational = isOperationalPath(relDir);
 
     if (relDir !== "" && !hasCodemap && isSourceDir(dir) && !isOperational) {
       errors.push(`Missing CodeMap: Directory '${relDir}' contains source but has no codemap.yml.`);

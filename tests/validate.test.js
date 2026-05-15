@@ -1,5 +1,12 @@
-import { nomadworks_validate_logic } from "../src/validate_logic.js";
+import {
+  isHiddenTree,
+  isIgnoredPath,
+  isOperationalPath,
+  isPlaceholderExemptPath,
+  nomadworks_validate_logic
+} from "../src/validate_logic.js";
 import fs from "node:fs";
+import ignore from "ignore";
 import path from "node:path";
 import os from "node:os";
 
@@ -103,6 +110,99 @@ describe("nomadworks_validate", () => {
 
     const result = await nomadworks_validate_logic(root);
     expect(result.ok).toBe(true); // Should ignore .md files in operational folders
+  });
+
+  test("Exempts nested operational folders from mandatory codemap checks", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "todo": {
+          "001-task.md": "# Task content"
+        }
+      },
+      "docs": {
+        "core": {
+          "guide.md": "# Guide"
+        }
+      },
+      "templates": {
+        "task-template.md": "# Template"
+      },
+      "dist": {
+        "index.js": "export default {};"
+      },
+      "evidences": {
+        "run.md": "# Evidence"
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
+  test("Exempts nested operational folders from shadow file checks when codemaps exist", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo\nmodules: [{path: tasks}]",
+      "tasks": {
+        "todo": {
+          "codemap.yml": "scope: module\nparent: ../codemap.yml\nentrypoints: []",
+          "unindexed_task.md": "# Task content"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
+  test("Allows placeholders under nested tasks/done registry paths", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "done": {
+          "archived-task.md": "# Done\n\n[To be defined]"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(true);
+  });
+
+  test("Does not exempt placeholder paths that only prefix-match tasks/done", async () => {
+    const root = createTestEnv({
+      "codemap.yml": "scope: repo",
+      "tasks": {
+        "done-old": {
+          "archived-task.md": "# Not Really Done\n\n[To be defined]"
+        },
+        "done_backup": {
+          "backup-task.md": "# Backup\n\n[Insert details]"
+        }
+      }
+    });
+
+    const result = await nomadworks_validate_logic(root);
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      expect.stringContaining("tasks" + path.sep + "done-old" + path.sep + "archived-task.md"),
+      expect.stringContaining("tasks" + path.sep + "done_backup" + path.sep + "backup-task.md")
+    ]));
+  });
+
+  test("Classifies Windows-style backslash relative paths consistently", () => {
+    expect(isOperationalPath("docs\\core")).toBe(true);
+    expect(isPlaceholderExemptPath("tasks\\done")).toBe(true);
+    expect(isPlaceholderExemptPath("tasks\\done\\archive\\task.md")).toBe(true);
+    expect(isPlaceholderExemptPath("tasks\\done-old\\task.md")).toBe(false);
+    expect(isPlaceholderExemptPath("tasks\\done_backup\\task.md")).toBe(false);
+    expect(isHiddenTree(".github\\workflows")).toBe(true);
+  });
+
+  test("Normalizes Windows-style relative paths before applying slash-based gitignore patterns", () => {
+    const ig = ignore().add("ignored/");
+
+    expect(isIgnoredPath(ig, "ignored\\logic.ts")).toBe(true);
   });
 
   test("Ignores hidden tool-owned directory trees like .github/workflows", async () => {

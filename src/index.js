@@ -1184,8 +1184,12 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
   return readResolvedFile(fragmentPath, worktree);
 }
 
-export default async function NomadWorksPlugin(input) {
-  const pluginOptions = input.options || input.config || {};
+export default async function NomadWorksPlugin(input, options = {}) {
+  const pluginOptions = {
+    ...(options || {}),
+    ...(input.config || {}),
+    ...(input.options || {})
+  };
   const worktree = path.resolve(input.worktree || process.cwd());
   const debugDir = generatedAgentsDir(worktree);
   const configPath = resolveConfigPath(worktree);
@@ -1550,9 +1554,9 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_session_export: tool({
       description: "Export selected OpenCode sessions with the native opencode export command into the workspace PAI sessions directory",
       args: {
-        session_ids: tool.schema.string().describe("Optional OpenCode session IDs, separated by commas or whitespace. Uses the current session when empty."),
-        repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, or plugin pai_root when empty."),
-        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.")
+        session_ids: tool.schema.string().describe("Optional OpenCode session IDs, separated by commas or whitespace. Uses the current session when empty.").optional(),
+        repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, plugin pai_root, or plugin sync_repo_path when empty.").optional(),
+        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.").optional()
       },
       async execute(args, context) {
         try {
@@ -1572,9 +1576,9 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_session_import: tool({
       description: "Import selected OpenCode sessions from native opencode export JSON files in the workspace PAI sessions directory",
       args: {
-        session_ids: tool.schema.string().describe("Optional session IDs to import. Imports all exported OpenCode sessions in the manifest when empty."),
-        repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, or plugin pai_root when empty."),
-        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.")
+        session_ids: tool.schema.string().describe("Optional session IDs to import. Imports all exported OpenCode sessions in the manifest when empty.").optional(),
+        repo_path: tool.schema.string().describe("Optional PAI root path. Uses pai.root, sync.repo_path, plugin pai_root, or plugin sync_repo_path when empty.").optional(),
+        opencode_command: tool.schema.string().describe("Optional OpenCode executable path or command. Defaults to pai.opencode_command or 'opencode'.").optional()
       },
       async execute(args, context) {
         try {
@@ -1592,7 +1596,7 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_sync_status: tool({
       description: "Show global PAI and workspace sync status",
       args: {
-        repo_path: tool.schema.string().describe("Optional sync Git repository path. Uses pai.root, sync.repo_path, pai_root, or plugin sync_repo_path.")
+        repo_path: tool.schema.string().describe("Optional sync Git repository path. Uses pai.root, sync.repo_path, plugin pai_root, or plugin sync_repo_path.").optional()
       },
       async execute(args, context) {
         try {
@@ -1605,7 +1609,7 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_sync_pull: tool({
       description: "Run git pull in the configured sync repository",
       args: {
-        repo_path: tool.schema.string().describe("Optional sync Git repository path.")
+        repo_path: tool.schema.string().describe("Optional sync Git repository path. Uses pai.root, sync.repo_path, plugin pai_root, or plugin sync_repo_path.").optional()
       },
       async execute(args, context) {
         try {
@@ -1619,8 +1623,8 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_sync_push: tool({
       description: "Commit and push the configured sync repository",
       args: {
-        repo_path: tool.schema.string().describe("Optional sync Git repository path."),
-        message: tool.schema.string().describe("Optional commit message. Defaults to 'sync nomadworks pai'.")
+        repo_path: tool.schema.string().describe("Optional sync Git repository path. Uses pai.root, sync.repo_path, plugin pai_root, or plugin sync_repo_path.").optional(),
+        message: tool.schema.string().describe("Optional commit message. Defaults to 'sync nomadworks pai'.").optional()
       },
       async execute(args, context) {
         try {

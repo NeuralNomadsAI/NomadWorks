@@ -94,6 +94,21 @@ describe("NomadWorks plugin PAI behavior", () => {
     expect(result.git_status.stdout).toContain("##");
   });
 
+  test("global PAI options from second plugin argument are honored when input options are empty", async () => {
+    const paiRoot = createGitRepo();
+    const worktree = createTestEnv([
+      "features:",
+      "  debug_dumps: false",
+      ""
+    ].join("\n"));
+
+    const plugin = await NomadWorksPlugin({ worktree, options: {} }, { pai_root: paiRoot });
+    const result = JSON.parse(await plugin.tool.nomadworks_sync_status.execute({}, { worktree }));
+
+    expect(result.pai_root).toBe(paiRoot);
+    expect(result.is_git_repository).toBe(true);
+  });
+
   test("sync push reports failed Git commands as FAIL", async () => {
     const paiRoot = createGitRepo();
     const worktree = createTestEnv([

@@ -134,6 +134,8 @@ NomadWorks can be configured globally in OpenCode with PAI root options:
 - `pai_root`: Git-managed PAI root shared across repositories.
 - `sync_repo_path`: defaults Git operations to the same PAI root.
 
+These options may be supplied as tuple plugin options in OpenCode. Repository-local `pai.root` and `sync.repo_path` override global plugin defaults when present.
+
 ## PAI context
 
 ```yaml
@@ -161,6 +163,6 @@ pai:
 
 When enabled, NomadWorks appends selected global PAI files first, then selected workspace PAI files. Both live in the Git-managed PAI root, outside the project repository. Global PAI uses `USER/`, `MEMORY/`, and `LEARNINGS/`; workspace PAI uses `WORKSPACES/<repo-id>/`. Neither overrides repository truth, SCRs, task files, evidence, docs, or CodeMaps.
 
-Use `nomadworks_session_export` to export the current OpenCode session, or pass explicit session IDs to export selected sessions using native `opencode export <sessionID>` JSON. Use `nomadworks_session_import` on another machine after `nomadworks_sync_pull` to import those files with native `opencode import <file>`.
+Use `nomadworks_session_export` to export selected sessions using native `opencode export <sessionID>` JSON. When no `session_ids` are provided, export only works if the OpenCode runtime supplies the current session ID in the tool context; otherwise the tool returns a failure asking for explicit session IDs. Use `nomadworks_session_import` on another machine after `nomadworks_sync_pull` to import those files with native `opencode import <file>`.
 
-Use `nomadworks_sync_pull` and `nomadworks_sync_push` for Git. Git, not NomadWorks, handles text-file merges and conflicts in the PAI root. Global PAI lives under `USER/`, `MEMORY/`, and `LEARNINGS/`; repo-specific PAI lives under `WORKSPACES/<repo-id>/`.
+Use `nomadworks_sync_pull` and `nomadworks_sync_push` for Git. Git, not NomadWorks, handles text-file merges and conflicts in the PAI root. If there are no changes to commit, `nomadworks_sync_push` returns status `no_changes` and does not run `git push`. Global PAI lives under `USER/`, `MEMORY/`, and `LEARNINGS/`; repo-specific PAI lives under `WORKSPACES/<repo-id>/`.

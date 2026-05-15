@@ -84,7 +84,7 @@ This tool performs the full close flow synchronously:
 
 ## `nomadworks_session_export`
 
-Exports selected OpenCode sessions with the native `opencode export <sessionID>` command into the workspace area of the Git-managed PAI root. If no `session_ids` are provided, it exports the current OpenCode session.
+Exports selected OpenCode sessions with the native `opencode export <sessionID>` command into the workspace area of the Git-managed PAI root. If no `session_ids` are provided, it exports the current OpenCode session only when the runtime supplies a current session ID in tool context; otherwise it fails and asks for explicit session IDs.
 
 ### Arguments
 
@@ -95,6 +95,7 @@ Exports selected OpenCode sessions with the native `opencode export <sessionID>`
 ### Notes
 
 - Generated files live under `WORKSPACES/<repo-id>/SESSIONS/` inside the PAI repository.
+- To export outside a live OpenCode session context, pass explicit `session_ids`.
 - Run `nomadworks_session_import` on another machine to import them with the native `opencode import <file>` command.
 
 ## `nomadworks_session_import`
@@ -125,7 +126,7 @@ Runs `git pull --ff-only` in the configured sync repository.
 
 ## `nomadworks_sync_push`
 
-Runs `git add .`, `git commit`, and `git push` in the configured sync repository.
+Runs `git add .`, `git commit`, and `git push` in the configured sync repository. If there are no changes to commit, it returns status `no_changes` with `push: null` and does not run `git push`.
 
 ### Arguments
 

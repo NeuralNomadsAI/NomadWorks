@@ -95,11 +95,15 @@ Starts a `workflow_runner` session for a complex task.
 
 - Only available in `full` team mode.
 - Used for `complex` implementation tasks.
-- The runner executes in a separate session and reports completion back to PMA.
+- The runner executes in a separate OpenCode session and reports completion back to PMA.
+- PMA-created runner sessions are created with `parentID` set to the current PMA session ID, so OpenCode can show the runner under the PMA session in the session tree.
+- `parentID` is organizational metadata only. It does **not** inherit parent session context, transcript history, tools, permissions, or active prompts; all required task context must still be included in the workflow instructions and task file.
+- Runtime completion relay and concurrency control continue to use NomadWorks' in-memory `activeWorkflows` registry, which tracks PMA session ID, task path, and workflow track for active runner sessions.
 - The runner is expected to orchestrate the lifecycle by validating task readiness, delegating implementation and verification work to specialists, and driving the task to delivery or a hard blocker.
 - For implementation tasks, the runner must create or append a Workflow Execution Plan in the task file after Pre-Task Sync and before implementation starts.
 - The runner must not directly edit product source code, tests, application configuration, or implementation files.
 - When a hard blocker is reached, the runner should end its run and return a final summary starting with `HARD BLOCKER:` so the plugin relays it back to the PMA session.
+- If the runner delegates to specialist sub-sessions, those sub-sessions are not automatically parented to PMA by `nomadflow_run_workflow` and do not receive context through the PMA runner `parentID`.
 
 ## `nomadflow_prompt_workflow`
 
@@ -114,3 +118,4 @@ Sends a follow-up prompt to an existing `workflow_runner` session.
 
 - Only available in `full` team mode.
 - Useful for bounce-backs, clarifications, and resumed runner work.
+- If the session is not already tracked in `activeWorkflows`, this tool resumes monitoring for completion relay to the current PMA session.

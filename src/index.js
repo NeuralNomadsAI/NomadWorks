@@ -19,6 +19,99 @@ const LEGACY_NOMADWORKS_DIRNAME = ".codenomad";
 
 const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
 
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function extractWorkflowSessionId(sessionResult) {
+  const candidates = [
+    sessionResult?.data?.id,
+    sessionResult?.data?.sessionID,
+    sessionResult?.data?.sessionId,
+    sessionResult?.data?.session?.id,
+    sessionResult?.data?.session?.ID,
+    sessionResult?.data?.info?.sessionID,
+    sessionResult?.data?.info?.id,
+    sessionResult?.id,
+    sessionResult?.sessionID,
+    sessionResult?.sessionId,
+    sessionResult?.session?.id
+  ];
+
+  const sessionId = candidates.find(isNonEmptyString);
+  if (sessionId) return sessionId.trim();
+
+  throw new Error("OpenCode session.create response missing session ID. Expected data.id, data.session.id, data.sessionID, or equivalent top-level ID.");
+}
+
+function textFromParts(parts) {
+  if (!Array.isArray(parts)) return "";
+
+  return parts
+    .map(part => {
+      if (isNonEmptyString(part?.text)) return part.text;
+      if (isNonEmptyString(part?.content)) return part.content;
+      if (isNonEmptyString(part?.input)) return part.input;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function textFromMessageList(messages) {
+  if (!Array.isArray(messages)) return "";
+
+  const assistantMessages = messages.filter(message => message?.role === "assistant" || message?.info?.role === "assistant");
+  const message = assistantMessages.at(-1) || messages.at(-1);
+  return textFromParts(message?.parts) || (isNonEmptyString(message?.text) ? message.text.trim() : "");
+}
+
+export function extractWorkflowFinalMessage(runResult) {
+  const partSources = [
+    runResult?.data?.parts,
+    runResult?.parts,
+    runResult?.data?.message?.parts,
+    runResult?.message?.parts,
+    runResult?.data?.response?.parts,
+    runResult?.response?.parts,
+    runResult?.data?.result?.parts,
+    runResult?.result?.parts,
+    runResult?.data?.output?.parts,
+    runResult?.output?.parts
+  ];
+
+  for (const parts of partSources) {
+    const text = textFromParts(parts);
+    if (text) return text;
+  }
+
+  const messageSources = [
+    runResult?.data?.messages,
+    runResult?.messages,
+    runResult?.data?.result?.messages,
+    runResult?.result?.messages
+  ];
+
+  for (const messages of messageSources) {
+    const text = textFromMessageList(messages);
+    if (text) return text;
+  }
+
+  const textSources = [
+    runResult?.data?.text,
+    runResult?.text,
+    runResult?.data?.content,
+    runResult?.content,
+    runResult?.data?.output,
+    runResult?.output
+  ];
+  const text = textSources.find(isNonEmptyString);
+  if (text) return text.trim();
+
+  throw new Error("OpenCode session.prompt response missing final message text. Expected text in parts, messages, text/content, or output fields.");
+}
+
 function nomadworksDir(worktree) {
   return path.join(worktree, NOMADWORKS_DIRNAME);
 }
@@ -821,7 +914,7 @@ export default async function NomadWorksPlugin(input) {
       if (debug) console.log(`[NomadFlow] Workflow Runner session ${sessionId} returned control.`);
 
       // Capture final message and notify PMA
-      const finalMessage = runResult.data.parts.map(p => p.text).join("\n");
+      const finalMessage = extractWorkflowFinalMessage(runResult);
       if (debug) console.log(`[NomadFlow] Attempting to notify PMA session ${pmaSessionId} of completion...`);
       
       await client.session.promptAsync({
@@ -1157,9 +1250,12 @@ export default async function NomadWorksPlugin(input) {
         try {
           // 1. Create a new session
           const sessionResult = await client.session.create({
-            body: { title: `Workflow Run: ${path.basename(args.task_path)}` }
+            body: {
+              title: `Workflow Run: ${path.basename(args.task_path)}`,
+              parentID: pmaSessionId
+            }
           });
-          const sessionId = sessionResult.data.id;
+          const sessionId = extractWorkflowSessionId(sessionResult);
 
           activeWorkflows.set(sessionId, { pmaSessionId, taskPath: args.task_path, track: workflowTrack });
           

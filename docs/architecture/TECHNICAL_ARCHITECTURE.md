@@ -11,7 +11,7 @@ This document defines the global patterns and technical strategy for this projec
 
 ## Tech Stack
 - **Runtime:** Node.js with ECMAScript modules
-- **Plugin SDK:** `@opencode-ai/plugin`
+- **Plugin SDK:** `@opencode/plugin` for OpenCode 2.3.2
 - **Configuration Format:** YAML for NomadWorks config and CodeMaps
 - **Tests:** Jest
 

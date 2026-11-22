@@ -84,8 +84,8 @@ Track these task files under `Active Discussions` in `tasks/current.md` until th
 - If a task was thought to be done but later needs discrepancies fixed or minor same-scope changes, reopen the same task instead of creating a new one.
 - Move it back into `Active` in `tasks/current.md`.
 - Keep the same task file ID and record the reason in `Reopen History`.
-- Reuse the same Task tool `task_id` for delegated task work when possible.
-- If the task used `workflow_runner`, reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible.
+- Pass the existing child's `sessionID` to `subagent` when resuming delegated work.
+- If the task used `workflow_runner`, pass the existing runner's `session_id` to `nomadflow_prompt_workflow`.
 
 ## Evidence By Track
 

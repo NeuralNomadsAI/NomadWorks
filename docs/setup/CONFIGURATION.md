@@ -74,6 +74,8 @@ Mandatory agents cannot be disabled:
 - `business_analyst`
 - `tech_lead`
 
+Legacy `.nomadworks` `tools` maps and `permission` rules are translated into V2 permissions. Prefer ordered `{ action, resource, effect }` rules for new overrides. Move legacy per-agent `temperature` settings to an OpenCode model variant and select it with `provider/model#variant`.
+
 ### Extend agent tools
 
 ```yaml

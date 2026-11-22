@@ -8,16 +8,16 @@ Instead of giving you a single generic assistant flow, NomadWorks gives you a sm
 
 ## Install
 
-Add the plugin to your OpenCode config:
+This version targets OpenCode 2.3.2. Add the plugin to your OpenCode config:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@neuralnomads/nomadworks"]
+  "plugins": ["@neuralnomads/nomadworks"]
 }
 ```
 
-Then restart OpenCode, open the target repository, and start talking to the `product_manager` agent (PMA).
+Open the target repository and start talking to the `product_manager` agent (PMA). Use `/reload` if the new plugin is not yet visible.
 
 PMA will guide the repository setup flow and, when needed, initialize NomadWorks inside the repo for you. The user does not need to manually run NomadWorks commands to get started.
 

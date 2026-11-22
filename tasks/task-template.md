@@ -101,7 +101,7 @@ Use this section when a task that was thought to be done must be resumed using t
 - **Requested By:** `[agent_name]`
 - **Reason:** [What discrepancy, incomplete work, or minor same-scope change was found]
 - **Resume Path:** [How the task returns to Active and which agent owns the next step]
-- **Task Tool Resume:** [Reuse the same Task tool `task_id` if applicable, otherwise write `Not applicable`]
+- **Subagent Resume:** [Reuse the same child `sessionID` if applicable, otherwise write `Not applicable`]
 - **Workflow Session Resume:** [Reuse the same Workflow Runner `session_id` if applicable, otherwise write `Not applicable`]
 
 ### Pre Sync
@@ -162,7 +162,7 @@ Use this section when a task that was thought to be done must be resumed using t
 ### Reopen Rule
 - If a completed task needs discrepancies fixed or minor same-scope changes after implementation, move the same task back into `Active` rather than creating a new task for the same unfinished scope.
 - Keep the same task file ID.
-- Reuse the same Task tool `task_id` when resuming delegated task work, when possible.
+- Pass the existing child's `sessionID` to `subagent` when resuming delegated task work.
 - Reuse the same Workflow Runner `session_id` when resuming a Workflow Runner task, when possible.
 
 # Reviews

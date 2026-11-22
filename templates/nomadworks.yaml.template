@@ -5,8 +5,9 @@ team_mode: {{teamMode}}
 defaults:
   # provider: openai
   # model: gpt-5.4
-  # temperature: 0.2
-  # permissions: allow
+  # To set sampling options, select an OpenCode model variant, e.g. openai/gpt-5.4#review.
+  # permissions:
+  #   - { action: shell, resource: "git push *", effect: ask }
 
 features:
   debug_dumps: true # Dumps final agent configs to .nomadworks/generated/agents/ for verification

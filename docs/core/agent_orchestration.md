@@ -46,8 +46,8 @@ The workflow is divided into a **Negotiation Phase** (Human-involved) and a **De
 ### 3.2 Reopen And Resume
 - If a task that was believed to be done later needs discrepancies fixed or minor same-scope changes, PMA should move that same task back into `Active` instead of creating a brand new task.
 - The task keeps the same task file ID and records the discrepancy in `Reopen History`.
-- When PMA resumes delegated task work, it should reuse the same Task tool `task_id` when possible.
-- If the task previously ran through `workflow_runner`, PMA should reuse both the same Task tool `task_id` and the same Workflow Runner `session_id` when possible so the prior context is preserved.
+- When PMA resumes delegated task work, it should pass the existing child's `sessionID` to `subagent`.
+- If the task previously ran through `workflow_runner`, PMA should pass the existing runner's `session_id` to `nomadflow_prompt_workflow`.
 - Create a new task only when the new work is truly follow-up scope rather than unfinished original scope.
 
 ### 3.1 Limited Parallelism (Shared Worktree)

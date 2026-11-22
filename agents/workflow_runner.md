@@ -95,7 +95,7 @@ If you cannot proceed after reasonable orchestration attempts:
 
 ## Resume Awareness
 
-If PMA later reopens the same task because discrepancies or minor same-scope changes were found after implementation, resume work under the same task file ID, reuse the same Task tool `task_id` for specialist continuity, and reuse the same Workflow Runner `session_id` when possible so prior context remains available.
+If PMA reopens the task, keep the same task file ID and pass the original child's `sessionID` to `subagent` when resuming specialist work. PMA can reuse the Workflow Runner's `session_id` with `nomadflow_prompt_workflow`.
 
 <include:plugin:Agents_Common.md>
 <include:policy:development-guidelines.md>

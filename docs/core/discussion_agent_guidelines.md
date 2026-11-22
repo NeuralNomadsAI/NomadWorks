@@ -16,7 +16,7 @@ Discussion transcript tools:
 Discussion lifecycle:
 
 - While a discussion is active, NomadWorks captures the raw transcript in `.nomadworks/runtime/discussions/`.
-- When `nomadworks_stop_discussion()` is requested, the tool itself invokes `business_analyst` with a blocking prompt to rewrite the runtime transcript into a structured summary in `tasks/discussions/`.
+- When `nomadworks_stop_discussion()` is requested, the tool queues a prompt for `business_analyst`, waits for the session to finish, and verifies the structured summary in `tasks/discussions/` before archiving the transcript.
 - The archived workflow-facing summary is the artifact later agents should read. The raw transcript is archived in runtime after summarization.
 
 ## Direct User Discussion

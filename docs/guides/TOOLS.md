@@ -31,7 +31,7 @@ Initializes NomadWorks in the current repository.
 - Generated prompt dumps go to `.nomadworks/generated/agents/` when `features.debug_dumps` is enabled.
 - Generated reference policy files go to `.nomadworks/generated/policies/` when `policies.extract_defaults` is set to `all`.
 - The scaffolded README files in `.nomadworks/agents/` and `.nomadworks/agent-additions/` list common `plugin:` and `policy:` includes that custom agents can reuse.
-- After a successful init, NomadWorks will request the OpenCode instance be disposed so the new config/agents can be reloaded.
+- After a successful init, NomadWorks rereads the repository settings and reloads the agent catalog without disposing the OpenCode instance.
 
 ## `nomadworks_validate`
 
@@ -58,7 +58,7 @@ Provide exactly one of:
 
 Also provide:
 
-- `previous_message_count`: number of earlier **user and assistant** messages from the current session to include before live capture starts or before a discussion is reopened
+- `previous_message_count`: number of earlier **user and assistant** messages to include before live capture starts or before a discussion is reopened. Backfill is limited to OpenCode's active context; it cannot retrieve messages from before the latest compaction.
 
 ### Notes
 
@@ -77,7 +77,7 @@ Stops the automatic discussion transcript for the current session.
 This tool performs the full close flow synchronously:
 
 - marks the runtime transcript as summarizing
-- invokes `business_analyst` with a blocking prompt to write the structured summary to `tasks/discussions/`
+- queues a prompt for `business_analyst` and waits for that session to finish writing the structured summary to `tasks/discussions/`
 - verifies the summary file was written successfully
 - archives the raw runtime transcript
 - returns the final closed result from the tool call itself
@@ -114,3 +114,4 @@ Sends a follow-up prompt to an existing `workflow_runner` session.
 
 - Only available in `full` team mode.
 - Useful for bounce-backs, clarifications, and resumed runner work.
+- Only the PMA session that started the runner can queue a follow-up in the same worktree. Runner sessions started by the V1 plugin do not carry the ownership metadata required by this tool.

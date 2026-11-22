@@ -1,31 +1,19 @@
 # Installation
 
-## 1. Install the package
+## 1. Add the plugin to OpenCode config
 
-Add the NomadWorks plugin package to the environment where OpenCode resolves plugins.
-
-```json
-{
-  "plugin": ["@neuralnomads/nomadworks"]
-}
-```
-
-OpenCode's config schema allows plugin entries to be strings or `[package, options]` tuples. Use the form that matches your broader OpenCode setup.
-
-## 2. Add the plugin to OpenCode config
-
-Add NomadWorks to your OpenCode configuration file and restart OpenCode so the plugin is loaded.
+This version targets OpenCode 2.3.2. Use the `plugins` key in `opencode.json(c)`. For local development, run `npm install` and `npm run build` in the NomadWorks checkout, then use that checkout's absolute directory in place of the package name.
 
 Minimal example:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@neuralnomads/nomadworks"]
+  "plugins": ["@neuralnomads/nomadworks"]
 }
 ```
 
-## 3. Start with PMA
+## 2. Start with PMA
 
 After the plugin loads, open the repository you want to enable and start talking to the `product_manager` agent (PMA).
 
@@ -38,7 +26,7 @@ During setup, PMA should ask whether you want:
 
 You do not need to manually run NomadWorks initialization commands as a first step.
 
-## 4. Repository initialization artifacts
+## 3. Repository initialization artifacts
 
 When PMA initializes the repository, NomadWorks creates:
 
@@ -54,7 +42,7 @@ When PMA initializes the repository, NomadWorks creates:
 - `docs/scrs/current.md`
 - `docs/scrs/done.md`
 
-## 5. Configure NomadWorks
+## 4. Configure NomadWorks
 
 Edit `.nomadworks/nomadworks.yaml` to set defaults, features, policy extraction behavior, and per-agent config overrides. Use `.nomadworks/agents/` for full repository-local agent definitions or custom agents, and `.nomadworks/agent-additions/` for additive repo-specific agent instructions.
 

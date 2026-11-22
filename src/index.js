@@ -3,8 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import ignore from "ignore";
+import { execFileSync } from "node:child_process";
 
-import { tool } from "@opencode-ai/plugin/tool";
+import { Plugin } from "@opencode/plugin";
 import { nomadworks_validate_logic } from "./validate_logic.js";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -13,11 +14,33 @@ const BUNDLE_POLICIES_DIR = path.join(PKG_ROOT, "policies");
 const TEMPLATES_DIR = path.join(PKG_ROOT, "templates");
 const MANDATORY_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
 const MINI_MODE_AGENTS = new Set(["product_manager", "business_analyst", "tech_lead"]);
-const DISCUSSION_BACKFILL_FETCH_LIMIT = 100;
 const NOMADWORKS_DIRNAME = ".nomadworks";
 const LEGACY_NOMADWORKS_DIRNAME = ".codenomad";
 
-const activeWorkflows = new Map(); // sessionId -> { pmaSessionId, taskPath, track }
+const activeWorkflows = new Map();
+const closingDiscussions = new Set();
+
+function checkoutRoot(directory) {
+  const root = (() => {
+    try {
+      return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+        cwd: directory, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]
+      }).trim();
+    } catch {
+      return directory;
+    }
+  })();
+  return fs.realpathSync(root);
+}
+
+const string = description => ({ type: "string", description });
+function tool({ description, args = {}, required = Object.keys(args), execute }) {
+  return {
+    description,
+    input: { type: "object", properties: args, required, additionalProperties: false },
+    execute
+  };
+}
 
 function nomadworksDir(worktree) {
   return path.join(worktree, NOMADWORKS_DIRNAME);
@@ -174,16 +197,22 @@ function parseFrontmatter(mdText) {
   }
 }
 
-function toModelString(provider, model) {
+function modelReference(provider, model, variant) {
   if (!model) return undefined;
-  const m = model.trim();
-  const p = provider ? provider.trim() : null;
-
-  if (p) {
-    if (m.startsWith(`${p}/`)) return m;
-    return `${p}/${m}`;
+  if (typeof model === "object") {
+    return modelReference(model.providerID || provider, model.id || model.model, model.variant || variant);
   }
-  return m;
+  // With an explicit provider, model IDs may themselves contain a slash.
+  model = model.trim();
+  provider = provider?.trim();
+  const ref = provider && !model.startsWith(`${provider}/`) ? `${provider}/${model}` : model;
+  const slash = ref.indexOf("/");
+  if (slash <= 0) return undefined;
+  const [id, suffix] = ref.slice(slash + 1).split("#", 2);
+  if (!id) return undefined;
+  const providerID = ref.slice(0, slash);
+  return { providerID: ({ "azure-cognitive-services": "azure", "google-vertex-anthropic": "google-vertex" })[providerID] || providerID, id,
+    ...(suffix || variant ? { variant: suffix || variant } : {}) };
 }
 
 function readTaskMetadata(taskPath, worktree) {
@@ -209,9 +238,9 @@ function readTaskMetadata(taskPath, worktree) {
   }
 }
 
-function hasActiveImplementationWorkflow() {
+function hasActiveImplementationWorkflow(worktree) {
   for (const workflow of activeWorkflows.values()) {
-    if ((workflow.track || "implementation") === "implementation") {
+    if (workflow.worktree === worktree && workflow.track === "implementation") {
       return true;
     }
   }
@@ -346,53 +375,44 @@ function appendDiscussionMessage(filePath, speaker, text, messageID = null) {
   writeDiscussionFile(filePath, nextFrontmatter, nextBody);
 }
 
-function extractTextParts(parts) {
-  return parts
-    .filter(part => part.type === "text" && !part.ignored && !part.synthetic && typeof part.text === "string")
-    .map(part => part.text.trim())
-    .filter(Boolean)
-    .join("\n\n");
+function messageText(message) {
+  if (message?.type === "user") return message.text.trim();
+  if (message?.type !== "assistant" || !message.time.completed) return "";
+  return message.content.filter(part => part.type === "text")
+    .map(part => part.text.trim()).filter(Boolean).join("\n\n");
 }
 
-async function fetchSessionMessages(client, sessionID, limit) {
-  const response = await client.session.messages({
-    path: { id: sessionID },
-    query: { limit }
-  });
-  return response.data || [];
+function finalReply(messages, promptID) {
+  const index = messages.findIndex(message => message.id === promptID);
+  if (index < 0) return "";
+  return messages.slice(index + 1).reverse()
+    .filter(message => message.type === "assistant")
+    .map(messageText).find(Boolean) || "";
 }
 
-function isBackfillableConversationMessage(message) {
-  if (!message?.info) return false;
-  if (message.info.role !== "user" && message.info.role !== "assistant") return false;
-  const text = extractTextParts(message.parts || []);
-  return Boolean(text);
-}
-
-function selectLastConversationMessages(messages, count) {
-  if (count <= 0) return [];
-  const eligible = messages.filter(isBackfillableConversationMessage);
-  return eligible.slice(-count);
-}
-
-async function appendMessageIfNeeded(client, worktree, registry, sessionID, messageID, speaker) {
+function appendConversationMessages(worktree, sessionID, messages) {
+  const registry = loadDiscussionRegistry(worktree);
   const discussion = registry.active[sessionID];
-  if (!discussion) return;
-  if (discussion.appendedMessageIDs?.includes(messageID)) return;
-
-  const response = await client.session.message({
-    path: { id: sessionID, messageID }
-  });
-  const text = extractTextParts(response.data.parts || []);
-  if (!text) return;
-
-  appendDiscussionMessage(path.join(worktree, discussion.transcriptPath), speaker, text, messageID);
-  discussion.appendedMessageIDs ??= [];
-  discussion.appendedMessageIDs.push(messageID);
-  saveDiscussionRegistry(worktree, registry);
+  if (discussion?.status !== "active") return 0;
+  const transcriptPath = path.join(worktree, discussion.transcriptPath);
+  const recorded = parseDiscussionFile(transcriptPath).data.appended_message_ids;
+  const seen = new Set([...(discussion.appendedMessageIDs || []), ...(recorded || [])]);
+  let added = 0;
+  for (const message of messages) {
+    const text = messageText(message);
+    if (!text || seen.has(message.id)) continue;
+    appendDiscussionMessage(transcriptPath, message.type === "user" ? "User" : message.agent || discussion.agent || "Assistant", text, message.id);
+    seen.add(message.id);
+    added++;
+  }
+  if (added) {
+    discussion.appendedMessageIDs = [...seen];
+    saveDiscussionRegistry(worktree, registry);
+  }
+  return added;
 }
 
-async function summarizeDiscussionWithBA(client, worktree, discussion) {
+async function summarizeDiscussionWithBA(ctx, worktree, discussion, signal) {
   const transcriptPath = path.join(worktree, discussion.transcriptPath);
   const summaryPath = path.join(worktree, discussion.summaryPath);
   const summaryDir = path.dirname(summaryPath);
@@ -400,9 +420,11 @@ async function summarizeDiscussionWithBA(client, worktree, discussion) {
 
   const hasExistingSummary = fs.existsSync(summaryPath);
   const priorMtimeMs = hasExistingSummary ? fs.statSync(summaryPath).mtimeMs : null;
-  const summarizerSession = await client.session.create({
-    body: { title: `Discussion Summary: ${discussion.id}` }
-  });
+  const { id: sessionID } = await ctx.session.create({
+    title: `Discussion Summary: ${discussion.id}`,
+    agent: "business_analyst",
+    location: { directory: worktree }
+  }, { signal });
 
   const promptText = [
     "[Agent Message] From: product_manager To: business_analyst",
@@ -490,16 +512,16 @@ async function summarizeDiscussionWithBA(client, worktree, discussion) {
     "If a later agent could make a wrong decision because a detail was omitted, that omission is a failure."
   ].join("\n");
 
-  const response = await client.session.prompt({
-    path: { id: summarizerSession.data.id },
-    body: {
-      agent: "business_analyst",
-      parts: [{ type: "text", text: promptText }]
-    }
-  });
-
-  const confirmation = extractTextParts(response.data.parts || []);
-  return { confirmation, summaryPath, transcriptPath, hasExistingSummary, priorMtimeMs };
+  try {
+    await ctx.session.prompt({ sessionID, text: promptText }, { signal });
+    await ctx.session.wait({ sessionID }, { signal });
+    signal?.throwIfAborted();
+    const session = await ctx.session.get({ sessionID }, { signal });
+    if (session.outcome !== "succeeded") throw new Error(`Business Analyst run ${session.outcome || "did not complete"}.`);
+    return { summaryPath, hasExistingSummary, priorMtimeMs };
+  } finally {
+    if (signal?.aborted) await ctx.session.interrupt({ sessionID, resume: false }).catch(console.error);
+  }
 }
 
 function archiveDiscussionTranscript(worktree, transcriptRelativePath) {
@@ -514,8 +536,8 @@ function archiveDiscussionTranscript(worktree, transcriptRelativePath) {
   return targetPath;
 }
 
-async function finalizeClosingDiscussion(client, worktree, registry, sessionID, discussion) {
-  const { confirmation, summaryPath, hasExistingSummary, priorMtimeMs } = await summarizeDiscussionWithBA(client, worktree, discussion);
+async function finalizeClosingDiscussion(ctx, worktree, sessionID, discussion, signal) {
+  const { summaryPath, hasExistingSummary, priorMtimeMs } = await summarizeDiscussionWithBA(ctx, worktree, discussion, signal);
   if (!fs.existsSync(summaryPath)) {
     throw new Error(`Discussion summary was not written to ${discussion.summaryPath}`);
   }
@@ -535,11 +557,11 @@ async function finalizeClosingDiscussion(client, worktree, registry, sessionID, 
   const transcriptPath = path.join(worktree, discussion.transcriptPath);
   setDiscussionStatus(transcriptPath, "closed");
   const archivedTranscriptPath = archiveDiscussionTranscript(worktree, discussion.transcriptPath);
+  const registry = loadDiscussionRegistry(worktree);
   delete registry.active[sessionID];
   saveDiscussionRegistry(worktree, registry);
 
   return {
-    confirmation,
     summaryPath: discussion.summaryPath,
     archivedTranscriptPath: archivedTranscriptPath
       ? path.relative(worktree, archivedTranscriptPath)
@@ -586,6 +608,18 @@ function isAgentEffectivelyEnabled(agentId, repoCfg) {
 
 function getOperatingTeamMode(repoCfg) {
   return repoCfg.team_mode;
+}
+
+function permissionAction(action) {
+  return ({ bash: "shell", task: "subagent", write: "edit", patch: "edit", apply_patch: "edit" })[action] || action;
+}
+
+function permissionRules(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") return [{ action: "*", resource: "*", effect: value }];
+  return Object.entries(value || {}).flatMap(([action, rules]) =>
+    (typeof rules === "string" ? [["*", rules]] : Object.entries(rules || {}))
+      .map(([resource, effect]) => ({ action: permissionAction(action), resource, effect })));
 }
 
 function readResolvedFile(relativePath, worktree) {
@@ -775,79 +809,70 @@ function getModePromptFragment(agentId, operatingTeamMode, worktree) {
   return readResolvedFile(fragmentPath, worktree);
 }
 
-export default async function NomadWorksPlugin(input) {
-  const worktree = path.resolve(input.worktree || process.cwd());
+export default Plugin.define({ id: "nomadworks", setup: setupNomadWorks });
+
+async function setupNomadWorks(ctx) {
+  const worktree = checkoutRoot(ctx.location.directory);
+  const location = { directory: ctx.location.directory };
   const debugDir = generatedAgentsDir(worktree);
-  const configPath = resolveConfigPath(worktree);
-  const discussionRegistry = loadDiscussionRegistry(worktree);
+  const lifetime = new AbortController();
+  const { signal } = lifetime;
+  let repoCfg, operatingTeamMode, agentSnapshot, configError;
 
-  // Load project-specific configuration
-  let repoCfg = { agents: {}, defaults: {}, features: {} };
-  if (fs.existsSync(configPath)) {
-    try {
-      repoCfg = YAML.parse(fs.readFileSync(configPath, "utf8")) || repoCfg;
-    } catch (e) {
-      console.error(`[NomadWorks] Failed to parse config at ${configPath}:`, e);
-    }
-  }
-  repoCfg = applyTeamConfigRules(repoCfg);
-  scaffoldNomadworksReadmes(worktree);
-  syncGeneratedPolicies(worktree, repoCfg);
-  const operatingTeamMode = getOperatingTeamMode(repoCfg);
-
-  const startAndMonitorWorkflow = async (sessionId, pmaSessionId, initialText, taskPath = null) => {
-    const client = input.client;
-    if (!client) {
-      console.error("[NomadFlow] No client available for monitoring.");
-      return;
-    }
-
-      const debug = repoCfg.features?.debug_logs === true;
-
-    const identifier = taskPath || sessionId;
-    if (debug) console.log(`[NomadFlow] Starting monitor for session ${sessionId} (Identifier: ${identifier}). Targeted PMA session: ${pmaSessionId}`);
-
-    try {
-      // Blocking prompt call in a background promise
-      if (debug) console.log(`[NomadFlow] Sending initial/resumed prompt to Workflow Runner session ${sessionId}...`);
-      const runResult = await client.session.prompt({
-        path: { id: sessionId },
-        body: {
-          agent: "workflow_runner",
-          parts: [{ type: "text", text: initialText }]
-        }
-      });
-
-      if (debug) console.log(`[NomadFlow] Workflow Runner session ${sessionId} returned control.`);
-
-      // Capture final message and notify PMA
-      const finalMessage = runResult.data.parts.map(p => p.text).join("\n");
-      if (debug) console.log(`[NomadFlow] Attempting to notify PMA session ${pmaSessionId} of completion...`);
-      
-      await client.session.promptAsync({
-        path: { id: pmaSessionId },
-        body: {
-          parts: [{ 
-            type: "text", 
-            text: `[NomadFlow Notification] Workflow Runner has finished work for: ${identifier}.\n\nFINAL SUMMARY FROM RUNNER:\n${finalMessage}` 
-          }]
-        }
-      });
-      if (debug) console.log(`[NomadFlow] Notification sent successfully to PMA session ${pmaSessionId}.`);
-      activeWorkflows.delete(sessionId);
-    } catch (err) {
-      if (debug) console.error(`[NomadFlow] Error in monitor loop for session ${sessionId}:`, err);
+  function loadRepository() {
+    const configPath = resolveConfigPath(worktree);
+    repoCfg = { agents: {}, defaults: {}, features: {} };
+    configError = undefined;
+    if (fs.existsSync(configPath)) {
       try {
-        await client.session.promptAsync({
-          path: { id: pmaSessionId },
-          body: {
-            parts: [{ type: "text", text: `[NomadFlow Error] Workflow Runner failed for ${identifier}: ${err.message}` }]
+        const parsed = YAML.parse(fs.readFileSync(configPath, "utf8"));
+        if (parsed !== null) {
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("Expected a YAML mapping.");
           }
-        });
-      } catch (notifyErr) {
-        if (debug) console.error(`[NomadFlow] Failed to send error notification to PMA:`, notifyErr);
+          repoCfg = parsed;
+        }
+      } catch (e) {
+        configError = `${path.relative(worktree, configPath)}: ${e.message}`;
+        console.error(`[NomadWorks] Failed to parse config at ${configPath}:`, e);
       }
-      activeWorkflows.delete(sessionId);
+    }
+
+    repoCfg = applyTeamConfigRules(repoCfg);
+    operatingTeamMode = getOperatingTeamMode(repoCfg);
+    scaffoldNomadworksReadmes(worktree);
+    syncGeneratedPolicies(worktree, repoCfg);
+    agentSnapshot = compileAgents();
+  }
+
+  const canRunWorkflow = () => Boolean(agentSnapshot.workflow_runner) && operatingTeamMode === "full";
+  const monitorWorkflow = async (sessionID, tracking) => {
+    const identifier = tracking.taskPath || sessionID;
+    let notification;
+    try {
+      while (true) {
+        const admission = tracking.admission;
+        const receipt = await admission;
+        await ctx.session.wait({ sessionID }, { signal });
+        signal.throwIfAborted();
+        if (tracking.admission !== admission) continue;
+        const session = await ctx.session.get({ sessionID }, { signal });
+        const messages = session.outcome === "succeeded" ? await ctx.session.context({ sessionID }, { signal }) : [];
+        if (tracking.admission !== admission) continue;
+        if (session.outcome !== "succeeded") throw new Error(session.outcome || "execution did not complete");
+        const reply = finalReply(messages, receipt.id);
+        if (!reply) throw new Error("no final assistant reply was found for the latest prompt");
+        notification = `[NomadFlow Notification] Workflow Runner has finished work for: ${identifier}.\n\nFINAL SUMMARY FROM RUNNER:\n${reply}`;
+        break;
+      }
+    } catch (err) {
+      notification = `[NomadFlow Error] Workflow Runner did not complete ${identifier}: ${err.message}`;
+    } finally {
+      if (activeWorkflows.get(sessionID) === tracking) activeWorkflows.delete(sessionID);
+    }
+    if (!signal.aborted) {
+      await ctx.session.prompt({ sessionID: tracking.pmaSessionId, text: notification, delivery: "queue" }, { signal })
+        .catch(err => console.error("[NomadFlow] Failed to notify PMA:", err));
     }
   };
 
@@ -855,7 +880,7 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_init: tool({
       description: "Initialize the NomadWorks workflow and CodeMap in the current repository",
       args: {
-        team_mode: tool.schema.string().describe("Team mode to initialize: mini or full")
+        team_mode: string("Team mode to initialize: mini or full")
       },
       async execute(args, context) {
         const requestedTeamMode = typeof args.team_mode === "string" ? args.team_mode.trim().toLowerCase() : "";
@@ -886,12 +911,12 @@ export default async function NomadWorksPlugin(input) {
           const enabled = isAgentEnabledForTeamMode(id, requestedTeamMode) ? "true" : "false";
           agentsSection += `  ${id}:\n    enabled: ${enabled}\n`;
         }
-        nomadworksConfig = nomadworksConfig.replace("agents:", "agents:\n" + agentsSection);
+        nomadworksConfig = nomadworksConfig.replace(/^agents:$/m, "agents:\n" + agentsSection.trimEnd());
 
         let codemapConfig = fs.readFileSync(codemapTmplPath, "utf8");
         codemapConfig = codemapConfig.replace("{{projectName}}", path.basename(context.worktree));
 
-        const cfgFilePath = path.join(cfgDir, "nomadworks.yaml");
+        const cfgFilePath = resolveConfigPath(context.worktree);
         const rootCodemapPath = path.join(context.worktree, "codemap.yml");
 
         if (!fs.existsSync(cfgFilePath)) {
@@ -928,24 +953,14 @@ export default async function NomadWorksPlugin(input) {
           fs.writeFileSync(scrsDonePath, "# Implemented Spec Change Requests\n\n| Date | SCR ID | Title | Related Feature | Task ID |\n| :--- | :--- | :--- | :--- | :--- |\n", "utf8");
         }
 
-        const initSummary = `NomadWorks initialized in '${requestedTeamMode}' team mode: .nomadworks/nomadworks.yaml, repo policy/agent folders, registries, and codemap.yml created.`;
-
-        // Ensure OpenCode reloads config/agents after scaffolding changes.
-        // Not all environments expose this API, so treat it as best-effort.
-        const client = input.client;
-        if (client?.instance?.dispose) {
-          try {
-            const disposeRes = await client.instance.dispose({ query: { directory: context.worktree } });
-            if (disposeRes?.data === true) {
-              return `${initSummary}\n\nOpenCode instance disposed so the new config can be loaded.`;
-            }
-            return `${initSummary}\n\nWarning: instance.dispose did not report success. You may need to restart OpenCode to load the new config.`;
-          } catch (e) {
-            return `${initSummary}\n\nWarning: Failed to dispose OpenCode instance (${e?.message || "unknown error"}). You may need to restart OpenCode to load the new config.`;
-          }
+        loadRepository();
+        if (configError) return `FAIL: Fix the existing NomadWorks configuration before activating the team.\n${configError}`;
+        await ctx.agent.reload();
+        await ctx.tool.reload();
+        if (repoCfg.enabled !== true) {
+          return `NomadWorks files are ready, but the team is disabled in ${path.relative(worktree, cfgFilePath)}. Set enabled: true and run /reload to activate it.`;
         }
-
-        return `${initSummary}\n\nNote: OpenCode instance dispose API unavailable in this environment. Restart OpenCode to load the new config.`;
+        return `NomadWorks initialized in '${operatingTeamMode}' team mode. Configuration: ${path.relative(worktree, cfgFilePath)}.`;
       }
     }),
     nomadworks_validate: tool({
@@ -968,14 +983,23 @@ export default async function NomadWorksPlugin(input) {
     nomadworks_start_discussion: tool({
       description: "Start an automatic discussion transcript for this session",
       args: {
-        title: tool.schema.string().describe("Discussion title for a new discussion"),
-        existing_discussion_id: tool.schema.string().describe("Existing discussion ID to reopen"),
-        previous_message_count: tool.schema.number().describe("Number of earlier user and assistant messages from this session to include in the discussion before live capture starts")
+        title: string("Discussion title for a new discussion"),
+        existing_discussion_id: string("Existing discussion ID to reopen"),
+        previous_message_count: { type: "integer", minimum: 0, description: "Number of earlier messages from the active session context to include" }
       },
+      required: ["previous_message_count"],
       async execute(args, context) {
-        const sessionID = context.sessionId || context.sessionID;
+        const { sessionID } = context;
         if (!sessionID) return "Error: Session ID not found in context.";
 
+        const history = args.previous_message_count > 0
+          ? await ctx.session.context({ sessionID }, { signal: context.signal }).catch(err => {
+            if (context.signal?.aborted) throw err;
+            console.warn("[NomadWorks] Discussion backfill unavailable:", err);
+            return [];
+          })
+          : [];
+        const discussionRegistry = loadDiscussionRegistry(worktree);
         const existing = discussionRegistry.active[sessionID];
         if (existing) {
           return `FAIL: An active discussion already exists for this session.\nID: ${existing.id}\nTitle: ${existing.title}\nFile: ${existing.filePath}\nStatus: ${existing.status}`;
@@ -988,11 +1012,9 @@ export default async function NomadWorksPlugin(input) {
           return "Error: Provide exactly one of 'title' or 'existing_discussion_id'.";
         }
 
-        const previousMessageCount = Number.isInteger(args.previous_message_count)
-          ? args.previous_message_count
-          : Number(args.previous_message_count);
-        if (!Number.isFinite(previousMessageCount) || previousMessageCount < 0) {
-          return "Error: previous_message_count must be a non-negative number.";
+        const previousMessageCount = args.previous_message_count;
+        if (!Number.isInteger(previousMessageCount) || previousMessageCount < 0) {
+          return "Error: previous_message_count must be a non-negative integer.";
         }
 
         const agent = context.agent || "assistant";
@@ -1068,35 +1090,9 @@ export default async function NomadWorksPlugin(input) {
         discussionRegistry.active[sessionID] = entry;
         saveDiscussionRegistry(context.worktree, discussionRegistry);
 
-        let backfilled = 0;
-        if (previousMessageCount > 0) {
-          try {
-            const messages = await fetchSessionMessages(input.client, sessionID, DISCUSSION_BACKFILL_FETCH_LIMIT);
-            const ordered = [...messages].sort((a, b) => a.info.time.created - b.info.time.created);
-            const selected = selectLastConversationMessages(ordered, previousMessageCount);
-
-            for (const message of selected) {
-              if (message.info.role === "user") {
-                const text = extractTextParts(message.parts || []);
-                if (text) {
-                  appendDiscussionMessage(identity.transcriptAbsolutePath, "User", text, message.info.id);
-                  if (!entry.appendedMessageIDs.includes(message.info.id)) entry.appendedMessageIDs.push(message.info.id);
-                  backfilled += 1;
-                }
-              } else if (message.info.role === "assistant") {
-                const text = extractTextParts(message.parts || []);
-                if (text) {
-                  appendDiscussionMessage(identity.transcriptAbsolutePath, agent, text, message.info.id);
-                  if (!entry.appendedMessageIDs.includes(message.info.id)) entry.appendedMessageIDs.push(message.info.id);
-                  backfilled += 1;
-                }
-              }
-            }
-            saveDiscussionRegistry(context.worktree, discussionRegistry);
-          } catch {
-            // Discussion stays active even if backfill fails.
-          }
-        }
+        const backfilled = previousMessageCount > 0
+          ? appendConversationMessages(worktree, sessionID, history.filter(messageText).slice(-previousMessageCount))
+          : 0;
 
         const action = existingDiscussionID ? "reopened" : "started";
         return `SUCCESS: Discussion ${action}.\nID: ${entry.id}\nTitle: ${discussionTitle}\nTranscript: ${entry.transcriptPath}\nFinal Summary Target: ${entry.summaryPath}\nStatus: active\nBackfilled messages: ${backfilled}`;
@@ -1106,62 +1102,71 @@ export default async function NomadWorksPlugin(input) {
       description: "Stop the automatic discussion transcript for this session",
       args: {},
       async execute(args, context) {
-        const sessionID = context.sessionId || context.sessionID;
+        const { sessionID } = context;
         if (!sessionID) return "Error: Session ID not found in context.";
 
+        const discussionRegistry = loadDiscussionRegistry(worktree);
         const existing = discussionRegistry.active[sessionID];
         if (!existing) {
           return "FAIL: No active discussion exists for this session.";
         }
-
         const discussionPath = path.join(context.worktree, existing.transcriptPath);
-        setDiscussionStatus(discussionPath, "summarizing");
-        existing.status = "summarizing";
-        saveDiscussionRegistry(context.worktree, discussionRegistry);
+        if (closingDiscussions.has(discussionPath)) return "FAIL: This discussion is already being summarized.";
+        closingDiscussions.add(discussionPath);
 
         try {
-          const result = await finalizeClosingDiscussion(input.client, context.worktree, discussionRegistry, sessionID, existing);
+          setDiscussionStatus(discussionPath, "summarizing");
+          existing.status = "summarizing";
+          saveDiscussionRegistry(context.worktree, discussionRegistry);
+          const result = await finalizeClosingDiscussion(ctx, worktree, sessionID, existing, context.signal);
           return `SUCCESS: Discussion stopped and summarized.\nID: ${existing.id}\nTitle: ${existing.title}\nFinal Summary: ${result.summaryPath}\nStatus: closed`;
         } catch (err) {
           setDiscussionStatus(discussionPath, "active");
-          existing.status = "active";
-          saveDiscussionRegistry(context.worktree, discussionRegistry);
+          const latest = loadDiscussionRegistry(worktree);
+          if (latest.active[sessionID]) {
+            latest.active[sessionID].status = "active";
+            saveDiscussionRegistry(worktree, latest);
+          }
           return `FAIL: Discussion summarization failed.\nID: ${existing.id}\nTitle: ${existing.title}\nTranscript: ${existing.transcriptPath}\nFinal Summary Target: ${existing.summaryPath}\nReason: ${err.message}`;
+        } finally {
+          closingDiscussions.delete(discussionPath);
         }
       }
     }),
      nomadflow_run_workflow: tool({
       description: "Start a workflow_runner session for a complex task",
       args: {
-        task_path: tool.schema.string().describe("Path to the task markdown file (e.g. tasks/todo/task_001.md)"),
-        instructions: tool.schema.string().describe("Detailed instructions for the workflow_runner")
+        task_path: string("Path to the task markdown file (e.g. tasks/todo/task_001.md)"),
+        instructions: string("Detailed instructions for the workflow_runner")
       },
       async execute(args, context) {
-        const client = input.client;
-        if (!client) return "Error: OpenCode client not available in plugin context.";
-
-        if (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full") {
+        if (!canRunWorkflow()) {
           return "FAIL: Workflow Runner is unavailable in the current team configuration. Switch to full team mode to run complex workflows.";
         }
 
-        const pmaSessionId = context.sessionId || context.sessionID;
+        const pmaSessionId = context.sessionID;
         if (!pmaSessionId) return "Error: PMA Session ID not found in context.";
 
         const taskMeta = readTaskMetadata(args.task_path, context.worktree);
         const workflowTrack = taskMeta.track || "implementation";
 
-        if (workflowTrack === "implementation" && hasActiveImplementationWorkflow()) {
+        if (workflowTrack === "implementation" && hasActiveImplementationWorkflow(worktree)) {
           return "FAIL: A shared-worktree implementation workflow is already running. You may continue investigation or spec work separately, but only one implementation workflow can own the shared worktree at a time.";
         }
 
+        const reservation = Symbol("workflow creation");
+        const tracking = { pmaSessionId, taskPath: args.task_path, track: workflowTrack, worktree };
+        activeWorkflows.set(reservation, tracking);
+        let sessionId;
         try {
-          // 1. Create a new session
-          const sessionResult = await client.session.create({
-            body: { title: `Workflow Run: ${path.basename(args.task_path)}` }
-          });
-          const sessionId = sessionResult.data.id;
-
-          activeWorkflows.set(sessionId, { pmaSessionId, taskPath: args.task_path, track: workflowTrack });
+          const session = await ctx.session.create({
+            title: `Workflow Run: ${path.basename(args.task_path)}`,
+            agent: "workflow_runner",
+            location,
+            metadata: { nomadworksWorkflow: { pmaSessionId, taskPath: args.task_path, track: workflowTrack } }
+          }, { signal });
+          sessionId = session.id;
+          activeWorkflows.set(sessionId, tracking);
           
           const metadataSummary = [
             taskMeta.complexity ? `Complexity: ${taskMeta.complexity}` : null,
@@ -1178,52 +1183,65 @@ export default async function NomadWorksPlugin(input) {
 
           const initialText = `Task File: ${args.task_path}\n${metadataSummary ? `\n${metadataSummary}` : ""}\n\nInstructions: ${args.instructions}\n\n${lifecycleInstruction}`;
           
-          // Start monitoring in background (async)
-          startAndMonitorWorkflow(sessionId, pmaSessionId, initialText, args.task_path);
+          tracking.admission = ctx.session.prompt({ sessionID: sessionId, text: initialText, delivery: "queue" }, { signal });
+          await tracking.admission;
+          void monitorWorkflow(sessionId, tracking);
 
           return `SUCCESS: Workflow Runner session started. ID: ${sessionId}\nTrack: ${workflowTrack}\nInstructions sent for ${args.task_path}. You will be notified on completion in this session (${pmaSessionId}).`;
         } catch (e) {
+          if (sessionId) activeWorkflows.delete(sessionId);
           console.error("[NomadFlow] Failed to start workflow session:", e);
           return `FAIL: Failed to initiate session: ${e.message}`;
+        } finally {
+          activeWorkflows.delete(reservation);
         }
       }
     }),
     nomadflow_prompt_workflow: tool({
       description: "Send a message or follow-up prompt to an existing workflow_runner session",
       args: {
-        session_id: tool.schema.string().describe("The ID of the session started by nomadflow_run_workflow"),
-        text: tool.schema.string().describe("The message or instruction to send to the workflow_runner")
+        session_id: string("The ID of the session started by nomadflow_run_workflow"),
+        text: string("The message or instruction to send to the workflow_runner")
       },
       async execute(args, context) {
-        const client = input.client;
-        if (!client) return "Error: OpenCode client not available.";
-
-        if (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full") {
+        if (!canRunWorkflow()) {
           return "FAIL: Workflow Runner is unavailable in the current team configuration. Switch to full team mode to send workflow runner prompts.";
         }
 
-        const pmaSessionId = context.sessionId || context.sessionID;
+        const pmaSessionId = context.sessionID;
         if (!pmaSessionId) return "Error: PMA Session ID not found.";
 
-        const tracking = activeWorkflows.get(args.session_id);
-
+        const sessionID = args.session_id;
         try {
-          // 1. If not currently tracked, start monitoring it now
-          if (!tracking) {
-            activeWorkflows.set(args.session_id, { pmaSessionId });
-            
-            // Start monitoring in background
-            startAndMonitorWorkflow(args.session_id, pmaSessionId, args.text);
-            return `SUCCESS: Session '${args.session_id}' was not tracked. Sent prompt and resumed monitoring. You will be notified on completion in this session (${pmaSessionId}).`;
+          const session = await ctx.session.get({ sessionID }, { signal });
+          const owner = session.metadata?.nomadworksWorkflow;
+          if (owner?.pmaSessionId !== pmaSessionId || session.agent !== "workflow_runner" ||
+              checkoutRoot(session.location.directory) !== worktree) {
+            return "FAIL: This session is not a Workflow Runner owned by this PMA in the current worktree.";
           }
-
-          // 2. If already tracking (runner is active), send asynchronously so PMA isn't blocked
-          await client.session.promptAsync({
-            path: { id: args.session_id },
-            body: { parts: [{ type: "text", text: args.text }] }
-          });
-
-          return `SUCCESS: Prompt sent to active session '${args.session_id}'. Instructions added to queue.`;
+          let tracking = activeWorkflows.get(sessionID);
+          if (!tracking) {
+            if (owner.track === "implementation" && hasActiveImplementationWorkflow(worktree)) {
+              return "FAIL: Another implementation workflow is already running in this worktree.";
+            }
+            tracking = { ...owner, worktree };
+            activeWorkflows.set(sessionID, tracking);
+            tracking.admission = ctx.session.prompt({ sessionID, text: args.text, delivery: "queue" }, { signal });
+            try {
+              await tracking.admission;
+            } catch (err) {
+              activeWorkflows.delete(sessionID);
+              throw err;
+            }
+            void monitorWorkflow(sessionID, tracking);
+          } else {
+            const previous = tracking.admission;
+            const admission = previous.then(() => ctx.session.prompt({ sessionID, text: args.text, delivery: "queue" }, { signal }));
+            // A rejected follow-up does not replace the last admitted input.
+            tracking.admission = admission.catch(() => previous);
+            await admission;
+          }
+          return `SUCCESS: Prompt queued for '${sessionID}'. You will be notified when the runner finishes.`;
         } catch (e) {
           return `FAIL: Could not send prompt: ${e.message}`;
         }
@@ -1231,60 +1249,7 @@ export default async function NomadWorksPlugin(input) {
     })
   };
 
-  return {
-    tool: tools,
-    event: async ({ event }) => {
-      const client = input.client;
-      if (!client) return;
-
-    const debug = repoCfg.features?.debug_logs === true;
-
-
-      // Terminal error states: failed or stopped
-      if (event.type === "session.failed" || event.type === "session.stopped") {
-        const sessionID = event.properties?.sessionID;
-        const tracking = activeWorkflows.get(sessionID);
-
-        if (tracking) {
-          if (debug) console.log(`[NomadFlow] Terminal event ${event.type} detected for session ${sessionID}. Notifying PMA...`);
-          try {
-            await client.session.promptAsync({
-              path: { id: tracking.pmaSessionId },
-              body: {
-                parts: [{ 
-                  type: "text", 
-                  text: `[NomadFlow Error Notification] Workflow Runner session ${sessionID} has ${event.type.split('.')[1]}. Please check the runner session logs.` 
-                }]
-              }
-            });
-            activeWorkflows.delete(sessionID);
-          } catch (err) {
-            console.error(`[NomadFlow] Failed to notify PMA session:`, err);
-          }
-        }
-      }
-
-      if (event.type === "message.updated") {
-        const info = event.properties?.info;
-        if (!info?.sessionID || !discussionRegistry.active[info.sessionID]) return;
-
-        try {
-          if (info.role === "user") {
-            await appendMessageIfNeeded(client, worktree, discussionRegistry, info.sessionID, info.id, "User");
-          }
-
-          if (info.role === "assistant" && info.time?.completed) {
-            const discussion = discussionRegistry.active[info.sessionID];
-            await appendMessageIfNeeded(client, worktree, discussionRegistry, info.sessionID, info.id, discussion.agent || "Assistant");
-          }
-        } catch (err) {
-          if (debug) console.error("[NomadWorks] Failed to append discussion transcript:", err);
-        }
-      }
-    },
-    async config(cfg) {
-      cfg.agent ??= {};
-      
+  function compileAgents() {
       const nomadworksActive = repoCfg && repoCfg.enabled === true;
 
       // 1. Identify and compile all NomadWorks agents from bundled bases,
@@ -1342,82 +1307,104 @@ export default async function NomadWorksPlugin(input) {
         const provider = agentOverride.provider || data.provider || repoCfg.defaults?.provider;
         const model = agentOverride.model || data.model || repoCfg.defaults?.model;
 
-        const agentConfig = {
-          description: data.description,
-          mode: agentOverride.mode || data.mode || "subagent",
-          prompt: finalPrompt,
-          tools: { ...(data.tools || {}), ...(agentOverride.tools || {}) },
-          permission: agentOverride.permission || data.permission || data.permissions || repoCfg.defaults?.permissions,
-          model: toModelString(provider, model),
-          temperature: agentOverride.temperature ?? data.temperature ?? repoCfg.defaults?.temperature,
-          disable: false
-        };
-
-        const specialKeys = ['description', 'mode', 'model', 'provider', 'temperature', 'permission', 'permissions', 'tools', 'tools_add', 'tools_remove', 'enabled', 'prompt', 'disable'];
-
         const defaults = repoCfg.defaults || {};
-        for (const k of Object.keys(defaults)) {
-          if (!specialKeys.includes(k)) agentConfig[k] = defaults[k];
-        }
-        for (const k of Object.keys(data)) {
-          if (!specialKeys.includes(k)) agentConfig[k] = data[k];
-        }
-        for (const k of Object.keys(agentOverride)) {
-          if (!specialKeys.includes(k)) agentConfig[k] = agentOverride[k];
-        }
-
-        if (Array.isArray(agentOverride.tools_add)) {
-          agentConfig.tools ??= {};
-          for (const t of agentOverride.tools_add) agentConfig.tools[t] = true;
-        }
-        if (Array.isArray(agentOverride.tools_remove)) {
-          if (agentConfig.tools) {
-            for (const t of agentOverride.tools_remove) delete agentConfig.tools[t];
-          }
-        }
-
-        if (id === "product_manager" && (!isAgentEffectivelyEnabled("workflow_runner", repoCfg) || operatingTeamMode !== "full")) {
-          if (agentConfig.tools) {
-            delete agentConfig.tools.nomadflow_run_workflow;
-            delete agentConfig.tools.nomadflow_prompt_workflow;
-          }
-        }
+        const settings = { ...defaults, ...data, ...agentOverride };
+        const agentTools = { ...data.tools, ...agentOverride.tools };
+        for (const name of agentOverride.tools_add || []) agentTools[name] = true;
+        for (const name of agentOverride.tools_remove || []) delete agentTools[name];
+        const permissions = [
+          ...Object.entries(agentTools).map(([name, enabled]) => ({
+            action: permissionAction(name), resource: "*", effect: enabled ? "allow" : "deny"
+          })),
+          ...permissionRules(agentOverride.permissions ?? agentOverride.permission ??
+            data.permissions ?? data.permission ?? defaults.permissions ?? defaults.permission)
+        ].filter(rule => ["allow", "ask", "deny"].includes(rule.effect));
+        const agentConfig = {
+          description: settings.description,
+          mode: agentOverride.mode || data.mode || "subagent",
+          system: finalPrompt,
+          model: modelReference(provider, model, settings.variant),
+          hidden: settings.hidden === true,
+          color: settings.color,
+          steps: settings.steps ?? settings.maxSteps,
+          permissions
+        };
 
         ourAgents[id] = agentConfig;
 
         if (repoCfg.features?.debug_dumps !== false) {
           const debugPath = path.join(debugDir, `${id}.md`);
-          const { prompt, ...dumpConfig } = agentConfig;
+          const { system, ...dumpConfig } = agentConfig;
           const debugHeader = `---
 ${YAML.stringify(dumpConfig).trim()}
 ---`;
           try {
             if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-            fs.writeFileSync(debugPath, `${debugHeader}\n\n${prompt}`, "utf8");
+            fs.writeFileSync(debugPath, `${debugHeader}\n\n${system}`, "utf8");
           } catch (e) { /* ignore debug errors */ }
         }
       }
 
-      const builtInAgents = ["build", "plan", "general", "explore"];
-      const preserveExistingAgents = repoCfg.features?.keep_builtin_agents === true;
-      const allToDisable = preserveExistingAgents
-        ? new Set()
-        : new Set([...builtInAgents, ...Object.keys(cfg.agent)]);
-
-      // Some users want to keep OpenCode's existing agents available alongside NomadWorks.
-      // In that mode, avoid disabling anything that OpenCode already registered.
-      
-      for (const id of allToDisable) {
-        if (!ourAgents[id]) {
-          cfg.agent[id] = { ...(cfg.agent[id] ?? {}), disable: true };
-        }
+      if (operatingTeamMode !== "full" || !ourAgents.workflow_runner) {
+        ourAgents.product_manager?.permissions.push(
+          { action: "nomadflow_run_workflow", resource: "*", effect: "deny" },
+          { action: "nomadflow_prompt_workflow", resource: "*", effect: "deny" }
+        );
       }
+      return ourAgents;
+  }
 
-      for (const [id, config] of Object.entries(ourAgents)) {
-        cfg.agent[id] = config;
+  loadRepository();
+  await ctx.agent.transform(editor => {
+    if (repoCfg.features?.keep_builtin_agents !== true) {
+      for (const agent of editor.list()) {
+        if (!agent.hidden && !Object.hasOwn(agentSnapshot, agent.id)) editor.remove(agent.id);
       }
-
-      cfg.default_agent = "product_manager";
     }
-  };
+    for (const [id, config] of Object.entries(agentSnapshot)) {
+      editor.update(id, agent => {
+        Object.assign(agent, structuredClone(config), { permissions: [...agent.permissions, ...structuredClone(config.permissions)] });
+      });
+    }
+    editor.default("product_manager");
+  });
+  await ctx.tool.transform(editor => {
+    for (const [name, definition] of Object.entries(tools)) {
+      if (name.startsWith("nomadflow_") && !canRunWorkflow()) continue;
+      editor.add({
+        ...definition,
+        name,
+        options: { permission: name },
+        async execute(args, context) {
+          const session = await ctx.session.get({ sessionID: context.sessionID });
+          if (checkoutRoot(session.location.directory) !== worktree) {
+            return { content: "FAIL: This session is outside the plugin's current worktree." };
+          }
+          return { content: await definition.execute(args, {
+            sessionID: context.sessionID, agent: context.agent, signal: context.signal, worktree
+          }) };
+        }
+      });
+    }
+  });
+
+  void (async () => {
+    for await (const event of ctx.event.subscribe({ types: ["session.inbox.delivered", "session.step.ended"], signal })) {
+      if (event.location && event.location.directory !== location.directory) continue;
+      const { sessionID } = event.data;
+      const discussion = loadDiscussionRegistry(worktree).active[sessionID];
+      if (discussion?.status !== "active") continue;
+      const messageID = event.type === "session.inbox.delivered" ? event.data.inboxID : event.data.assistantMessageID;
+      try {
+        const messages = await ctx.session.context({ sessionID }, { signal });
+        if (!signal.aborted) appendConversationMessages(worktree, sessionID, messages.filter(message => message.id === messageID));
+      } catch (err) {
+        if (!signal.aborted) console.error("[NomadWorks] Failed to append discussion transcript:", err);
+      }
+    }
+  })().catch(err => {
+    if (!signal.aborted) console.error("[NomadWorks] Discussion event subscription stopped:", err);
+  });
+
+  return () => lifetime.abort();
 }
